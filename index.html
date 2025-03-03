@@ -71,11 +71,13 @@
                         view.whenLayerView(graphic.layer).then(function (layerView) {
                             if (highlight) highlight.remove();
                             highlight = layerView.highlight(graphic);
-                            console.log("Feature highlighted:", graphic.attributes.Name_new);
+                            // console.log("Available attributes:", Object.keys(graphic.attributes));
+                            // console.log("Feature highlighted:", graphic.attributes.Name_new || "No Name Found");
+
                         });
 
                         view.popup.open({
-                            title: "Country: " + graphic.attributes.Name_new,
+                            title: "Country: " + (graphic.attributes.Name_new || graphic.attributes.Country || "Unknown"),
                             content: `<b>Change in Population:</b> ${graphic.attributes.Change_in_the_number_of_interna}`,
                             location: event.mapPoint
                         });
