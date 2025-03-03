@@ -25,9 +25,8 @@
         require([
             "esri/config",
             "esri/WebMap",
-            "esri/views/MapView",
-            "esri/widgets/Popup"
-        ], function (esriConfig, WebMap, MapView, Popup) {
+            "esri/views/MapView"
+        ], function (esriConfig, WebMap, MapView) {
 
             esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurGGCFBPLWn4zHTeFKkYXC8xdZ9PlNb6vx_TERSbT8dEWpQ1tlMiIcoahwMafz_F8YVz1F2IzH2PzS8571yH_yIdjFi1pLjVeLbP1qKl9sZqpsSTSUQ-lvcs-aXX4BltylF0Z1XQ_2GX3B_aGBCu2R5TL0OZF2hIp-nuwzzZ7AJQxOxiYAJA3kmvn6SYmKLsw3vJ24gfdcA8uSEghq_BXIkU.AT1_xAwz1ItR"; // Replace with your actual API key
 
@@ -48,20 +47,29 @@
 
             let highlight;
             view.on("click", function (event) {
-                view.hitTest(event).then(function (response) {
-                    console.log("Clicked location:", event.mapPoint);
+                console.log("Map clicked at:", event.mapPoint);
 
-                    if (highlight) {
-                        highlight.remove();
+                view.hitTest(event).then(function (response) {
+                    console.log("HitTest results:", response.results);
+
+                    if (!response.results || response.results.length === 0) {
+                        console.warn("No features found at this location.");
+                        return;
                     }
 
-                    const results = response.results.filter(res => res.graphic.layer.type === "feature");
+                    const validResults = response.results.filter(res => res.graphic && res.graphic.layer && res.graphic.layer.type === "feature");
 
-                    if (results.length > 0) {
-                        const graphic = results[0].graphic;
-                        console.log("Feature clicked:", graphic.attributes);
+                    if (validResults.length === 0) {
+                        console.warn("No valid feature layers found.");
+                        return;
+                    }
 
+                    const graphic = validResults[0].graphic;
+                    console.log("Feature clicked:", graphic.attributes);
+
+                    graphic.layer.when().then(() => {
                         view.whenLayerView(graphic.layer).then(function (layerView) {
+                            if (highlight) highlight.remove();
                             highlight = layerView.highlight(graphic);
                             console.log("Feature highlighted:", graphic.attributes.Name_new);
                         });
@@ -71,9 +79,10 @@
                             content: `<b>Change in Population:</b> ${graphic.attributes.Change_in_the_number_of_interna}`,
                             location: event.mapPoint
                         });
-                    } else {
-                        console.warn("No feature found at this location.");
-                    }
+                    }).catch(error => {
+                        console.error("Error loading layer view:", error);
+                    });
+
                 }).catch(error => {
                     console.error("Error with hitTest:", error);
                 });
