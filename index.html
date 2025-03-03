@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My ArcGIS Web Map</title>
-    <script src="https://js.arcgis.com/4.29/"></script>
+    <title>ArcGIS Web Map with Pop-ups</title>
+    <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css">
     <style>
         html,
         body,
@@ -16,13 +16,20 @@
             width: 100%;
         }
     </style>
+    <script src="https://js.arcgis.com/4.32/"></script>
 </head>
 
 <body>
     <div id="viewDiv"></div>
     <script>
-        require(["esri/config", "esri/WebMap", "esri/views/MapView"], function (esriConfig, WebMap, MapView) {
-            esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurGGCFBPLWn4zHTeFKkYXC8xdZ9PlNb6vx_TERSbT8dEWpQ1tlMiIcoahwMafz_F8YVz1F2IzH2PzS8571yH_yIdjFi1pLjVeLbP1qKl9sZqpsSTSUQ-lvcs-aXX4BltylF0Z1XQ_2GX3B_aGBCu2R5TL0OZF2hIp-nuwzzZ7AJQxOxiYAJA3kmvn6SYmKLsw3vJ24gfdcA8uSEghq_BXIkU.AT1_xAwz1ItR "; // Replace with your ArcGIS Developer API Key
+        require([
+            "esri/config",
+            "esri/WebMap",
+            "esri/views/MapView",
+            "esri/widgets/Popup"
+        ], function (esriConfig, WebMap, MapView, Popup) {
+
+            esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurGGCFBPLWn4zHTeFKkYXC8xdZ9PlNb6vx_TERSbT8dEWpQ1tlMiIcoahwMafz_F8YVz1F2IzH2PzS8571yH_yIdjFi1pLjVeLbP1qKl9sZqpsSTSUQ-lvcs-aXX4BltylF0Z1XQ_2GX3B_aGBCu2R5TL0OZF2hIp-nuwzzZ7AJQxOxiYAJA3kmvn6SYmKLsw3vJ24gfdcA8uSEghq_BXIkU.AT1_xAwz1ItR"; // Replace with your actual API key
 
             const webMap = new WebMap({
                 portalItem: {
@@ -34,8 +41,44 @@
                 container: "viewDiv",
                 map: webMap,
                 center: [0, 20],
-                zoom: 2,
+                zoom: 2
             });
+
+            view.popup.autoOpenEnabled = true;
+
+            let highlight;
+            view.on("click", function (event) {
+                view.hitTest(event).then(function (response) {
+                    console.log("Clicked location:", event.mapPoint);
+
+                    if (highlight) {
+                        highlight.remove();
+                    }
+
+                    const results = response.results.filter(res => res.graphic.layer.type === "feature");
+
+                    if (results.length > 0) {
+                        const graphic = results[0].graphic;
+                        console.log("Feature clicked:", graphic.attributes);
+
+                        view.whenLayerView(graphic.layer).then(function (layerView) {
+                            highlight = layerView.highlight(graphic);
+                            console.log("Feature highlighted:", graphic.attributes.Name_new);
+                        });
+
+                        view.popup.open({
+                            title: "Country: " + graphic.attributes.Name_new,
+                            content: `<b>Change in Population:</b> ${graphic.attributes.Change_in_the_number_of_interna}`,
+                            location: event.mapPoint
+                        });
+                    } else {
+                        console.warn("No feature found at this location.");
+                    }
+                }).catch(error => {
+                    console.error("Error with hitTest:", error);
+                });
+            });
+
         });
     </script>
 </body>

@@ -4,8 +4,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ArcGIS Web Map with Pop-ups</title>
-    <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css">
+    <title>My ArcGIS Web Map</title>
+    <script src="https://js.arcgis.com/4.29/"></script>
     <style>
         html,
         body,
@@ -16,63 +16,26 @@
             width: 100%;
         }
     </style>
-    <script src="https://js.arcgis.com/4.32/"></script>
 </head>
 
 <body>
     <div id="viewDiv"></div>
     <script>
-        require([
-            "esri/config",
-            "esri/WebMap",
-            "esri/views/MapView"
-        ], function (esriConfig, WebMap, MapView) {
+        require(["esri/config", "esri/WebMap", "esri/views/MapView"], function (esriConfig, WebMap, MapView) {
+            esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurGGCFBPLWn4zHTeFKkYXC8xdZ9PlNb6vx_TERSbT8dEWpQ1tlMiIcoahwMafz_F8YVz1F2IzH2PzS8571yH_yIdjFi1pLjVeLbP1qKl9sZqpsSTSUQ-lvcs-aXX4BltylF0Z1XQ_2GX3B_aGBCu2R5TL0OZF2hIp-nuwzzZ7AJQxOxiYAJA3kmvn6SYmKLsw3vJ24gfdcA8uSEghq_BXIkU.AT1_xAwz1ItR "; // Replace with your ArcGIS Developer API Key
 
-            // ✅ Set your API Key
-            esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurGGCFBPLWn4zHTeFKkYXC8xdZ9PlNb6vx_TERSbT8dEWpQ1tlMiIcoahwMafz_F8YVz1F2IzH2PzS8571yH_yIdjFi1pLjVeLbP1qKl9sZqpsSTSUQ-lvcs-aXX4BltylF0Z1XQ_2GX3B_aGBCu2R5TL0OZF2hIp-nuwzzZ7AJQxOxiYAJA3kmvn6SYmKLsw3vJ24gfdcA8uSEghq_BXIkU.AT1_xAwz1ItR"; // Replace with your actual API key
-
-            // ✅ Load WebMap using your WebMap ID
             const webMap = new WebMap({
                 portalItem: {
-                    id: "3682549c7bb847ac989c3a1958907f24" // Replace with your actual WebMap ID
+                    id: "3682549c7bb847ac989c3a1958907f24"
                 }
             });
 
-            // ✅ Initialize the MapView
             const view = new MapView({
                 container: "viewDiv",
                 map: webMap,
-                center: [0, 20], // Longitude, latitude
-                zoom: 2
+                center: [0, 20],
+                zoom: 2,
             });
-
-            let highlight; // Store the highlighted feature
-
-            // ✅ Auto-enable popups
-            view.popup.autoOpenEnabled = true;
-
-            // ✅ Handle click events for popups and highlighting
-            view.on("click", function (event) {
-                console.log("🖱️ Map clicked at", event.mapPoint);
-
-                view.popup.open({
-                    location: event.mapPoint
-                });
-
-                // ✅ Highlight the selected feature
-                view.popup.watch("features", function (features) {
-                    if (highlight) highlight.remove(); // Remove previous highlight
-
-                    if (features.length > 0) {
-                        const featureLayer = features[0].layer;
-                        view.whenLayerView(featureLayer).then(layerView => {
-                            highlight = layerView.highlight(features[0]);
-                            console.log("✨ Feature highlighted:", features[0].attributes.Name_new);
-                        });
-                    }
-                });
-            });
-
         });
     </script>
 </body>
