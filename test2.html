@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ArcGIS Web Map with Pop-ups</title>
+    <title>ArcGIS Web Map with Feature Layers</title>
     <link rel="stylesheet" href="https://js.arcgis.com/4.32/esri/themes/light/main.css">
     <style>
         html,
@@ -24,33 +24,58 @@
     <script>
         require([
             "esri/config",
-            "esri/WebMap",
-            "esri/views/MapView"
-        ], function (esriConfig, WebMap, MapView) {
+            "esri/Map",
+            "esri/views/MapView",
+            "esri/layers/FeatureLayer"
+        ], function (esriConfig, Map, MapView, FeatureLayer) {
 
             esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurGGCFBPLWn4zHTeFKkYXC8xdZ9PlNb6vx_TERSbT8dEWpQ1tlMiIcoahwMafz_F8YVz1F2IzH2PzS8571yH_yIdjFi1pLjVeLbP1qKl9sZqpsSTSUQ-lvcs-aXX4BltylF0Z1XQ_2GX3B_aGBCu2R5TL0OZF2hIp-nuwzzZ7AJQxOxiYAJA3kmvn6SYmKLsw3vJ24gfdcA8uSEghq_BXIkU.AT1_xAwz1ItR"; // Replace with your actual API key
 
-            const webMap = new WebMap({
-                portalItem: {
-                    id: "3682549c7bb847ac989c3a1958907f24"
-                }
+            function createFeatureLayer(url, title) {
+                return new FeatureLayer({
+                    url: url,
+                    title: title,
+                    outFields: ["*"],
+                    popupTemplate: {
+                        title: "{title}",
+                        content: "Attributes: {OBJECTID}" // Adjust based on available attributes
+                    }
+                });
+            }
+
+            const map = new Map({
+                basemap: "streets-navigation-vector"
             });
 
             const view = new MapView({
                 container: "viewDiv",
-                map: webMap,
+                map: map,
                 center: [0, 20],
                 zoom: 2
             });
 
+            // Add Feature Layers
+            const layers = [
+                createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/41", "Change in Immigrant Population (2015-2020)"),
+                createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/1", "Change in Emigrant Population (2015-2020)"),
+                createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/42", "Net Migration (2024)"),
+                createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/43", "Migration by Region"),
+                createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/44", "Migration Volumes (1990-1995)"),
+                createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/45", "Migration Volumes (1995-2000)"),
+                createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/48", "Migration Volumes (2000-2005)"),
+                createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/46", "Migration Volumes (2005-2010)")
+            ];
+
+            layers.forEach(layer => map.add(layer));
+
             view.popup.autoOpenEnabled = true;
 
             let highlight;
+
             view.on("click", function (event) {
                 console.log("Map clicked at:", event.mapPoint);
 
                 view.hitTest(event).then(function (response) {
-
                     if (!response.results || response.results.length === 0) {
                         console.warn("No features found at this location.");
                         return;
@@ -67,22 +92,16 @@
                     console.log("Feature clicked:", graphic.attributes);
                     console.log("Available attributes:", Object.keys(graphic.attributes));
 
-                    // Ensure the layer is fully loaded before highlighting
+                    if (highlight) highlight.remove();
+
                     graphic.layer.when().then(() => {
                         view.whenLayerView(graphic.layer).then(function (layerView) {
-                            if (highlight) highlight.remove();
                             highlight = layerView.highlight(graphic);
                             console.log("Feature highlighted successfully.");
                         });
 
-                        // Extracting the correct attribute name
-                        const countryName = graphic.attributes.Name_new || graphic.attributes.Country || "Unknown";
-                        const populationChange = graphic.attributes.Change_in_the_number_of_interna || "Data Unavailable";
-
-                        // Show popup
                         view.popup.open({
-                            title: "Country: " + countryName,
-                            content: `<b>Change in Population:</b> ${populationChange}`,
+                            features: [graphic],
                             location: event.mapPoint
                         });
 

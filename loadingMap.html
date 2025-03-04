@@ -75,10 +75,16 @@
                             console.log("Feature highlighted successfully.");
                         });
 
-                        view.popup.open({
-                            features: [graphic],
-                            location: event.mapPoint
-                        });
+                        // Ensure pop-ups are displayed using the layer's configured settings
+                        if (graphic.layer.popupTemplate) {
+                            console.log("Using predefined popupTemplate.");
+                            view.popup.open({
+                                features: [graphic],
+                                location: event.mapPoint
+                            });
+                        } else {
+                            console.warn("No popupTemplate found for this layer.");
+                        }
 
                     }).catch(error => {
                         console.error("Error loading layer view:", error);
@@ -88,6 +94,7 @@
                     console.error("Error with hitTest:", error);
                 });
             });
+
 
         });
     </script>
