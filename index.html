@@ -165,34 +165,35 @@
             function addBasemapToggles() {
                 const form = document.getElementById("basemapForm");
 
-                // Default: None selected
-                basemapLayers.forEach(layer => layer.layer.visible = false);
-
-                const noneOption = document.createElement("input");
-                noneOption.type = "radio";
-                noneOption.name = "basemapGroup";
-                noneOption.id = "noneBasemap";
-                noneOption.checked = true;
+                // "None" radio button
+                const noneRadio = document.createElement("input");
+                noneRadio.type = "radio";
+                noneRadio.name = "basemapGroup";
+                noneRadio.id = "noneBasemap";
+                noneRadio.checked = true;
+                noneRadio.addEventListener("change", () => {
+                    basemapLayers.forEach(layerItem => {
+                        layerItem.layer.visible = false;
+                    });
+                });
 
                 const noneLabel = document.createElement("label");
                 noneLabel.htmlFor = "noneBasemap";
                 noneLabel.innerText = "None";
 
                 const noneDiv = document.createElement("div");
-                noneDiv.className = "layer-item";  // Ensure same styling as others
-                noneDiv.appendChild(noneOption);
+                noneDiv.className = "layer-item";
+                noneDiv.appendChild(noneRadio);
                 noneDiv.appendChild(noneLabel);
-
                 form.appendChild(noneDiv);
 
-
+                // Basemap radio buttons
                 basemapLayers.forEach(item => {
                     const radio = document.createElement("input");
                     radio.type = "radio";
                     radio.name = "basemapGroup";
                     radio.id = item.key;
                     radio.checked = false;
-
                     radio.addEventListener("change", () => {
                         basemapLayers.forEach(layerItem => {
                             layerItem.layer.visible = layerItem.key === item.key;
