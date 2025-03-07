@@ -15,10 +15,10 @@
 
     <!-- Sidebar for Layer Controls -->
     <div id="layerControls">
-        <h3>Toggle Layers</h3>
+        <h3>Data Selection</h3>
         <h4>Basemaps</h4>
         <form id="basemapForm"></form>
-        <h4>Flow Lines</h4>
+        <h4>Migration Volumes (Flow Lines)</h4>
         <form id="flowlineForm"></form>
     </div>
 
@@ -28,7 +28,7 @@
             "esri/Map",
             "esri/views/MapView",
             "esri/layers/FeatureLayer"
-        ], function (esriConfig, Map, MapView, FeatureLayer) {
+        ], function (esriConfig, Map, MapView, FeatureLayer) { // anonymous function
 
             esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurGGCFBPLWn4zHTeFKkYXC8xdZ9PlNb6vx_TERSbT8dEWpQ1tlMiIcoahwMafz_F8YVz1F2IzH2PzS8571yH_yIdjFi1pLjVeLbP1qKl9sZqpsSTSUQ-lvcs-aXX4BltylF0Z1XQ_2GX3B_aGBCu2R5TL0OZF2hIp-nuwzzZ7AJQxOxiYAJA3kmvn6SYmKLsw3vJ24gfdcA8uSEghq_BXIkU.AT1_xAwz1ItR"; // Replace with your actual API key
 
@@ -110,13 +110,13 @@
                 }
             ];
 
-            // Flowline layers (Start hidden, default: 2005-2010)
+            // Flowline layers
             const flowlineLayers = [
                 {
                     key: "flowLines1990",
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/44",
-                        "Migration Volumes 1990-1995",
+                        "1990-1995",
                         {
                             title: "Migration Flow (1990-1995)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
@@ -127,7 +127,7 @@
                     key: "flowLines1995",
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/45",
-                        "Migration Volumes 1995-2000",
+                        "1995-2000",
                         {
                             title: "Migration Flow (1995-2000)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
@@ -138,7 +138,7 @@
                     key: "flowLines2000",
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/48",
-                        "Migration Volumes 2000-2005",
+                        "2000-2005",
                         {
                             title: "Migration Flow (2000-2005)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
@@ -149,7 +149,7 @@
                     key: "flowLines2005",
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/46",
-                        "Migration Volumes 2005-2010",
+                        "2005-2010",
                         {
                             title: "Migration Flow (2005-2010)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
