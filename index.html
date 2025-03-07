@@ -18,7 +18,6 @@
         <h3>Toggle Layers</h3>
         <h4>Basemaps</h4>
         <form id="basemapForm"></form>
-        <!-- <button id="noneBasemapBtn">None</button> -->
         <h4>Flow Lines</h4>
         <form id="flowlineForm"></form>
     </div>
@@ -33,15 +32,55 @@
 
             esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurGGCFBPLWn4zHTeFKkYXC8xdZ9PlNb6vx_TERSbT8dEWpQ1tlMiIcoahwMafz_F8YVz1F2IzH2PzS8571yH_yIdjFi1pLjVeLbP1qKl9sZqpsSTSUQ-lvcs-aXX4BltylF0Z1XQ_2GX3B_aGBCu2R5TL0OZF2hIp-nuwzzZ7AJQxOxiYAJA3kmvn6SYmKLsw3vJ24gfdcA8uSEghq_BXIkU.AT1_xAwz1ItR"; // Replace with your actual API key
 
+            // Function to create FeatureLayer with popups
             function createFeatureLayer(url, title, type) {
+                let popupTemplate;
+
+                if (type === "netMigration") {
+                    popupTemplate = {
+                        title: "Net Migration (2024)",
+                        content: `<p><b>Country:</b> {name}</p><p><b>Net Migration:</b> {Net_migration___Sex__all___Age_}</p>`
+                    };
+                } else if (type === "changeInImmigrants") {
+                    popupTemplate = {
+                        title: "Change in Immigrant Population (2015-2020)",
+                        content: `<p><b>Country:</b> {Name_new}</p><p><b>Total:</b> {Change_in_the_number_of_interna}</p>`
+                    };
+                } else if (type === "changeInEmigrants") {
+                    popupTemplate = {
+                        title: "Change in Emigrant Population (2015-2020)",
+                        content: `<p><b>Country:</b> {Name_new}</p><p><b>Total:</b> {Change_in_the_number_of_emigran}</p>`
+                    };
+                } else if (type.includes("flowLines")) {
+                    popupTemplate = {
+                        title: `Migration Volumes (${title.split(" ")[2]})`,
+                        content: `<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>`
+                    };
+                } else {
+                    popupTemplate = {
+                        title: title,
+                        content: function (feature) {
+                            let attributes = feature.graphic.attributes;
+                            let contentHTML = "<ul>";
+                            for (let key in attributes) {
+                                contentHTML += `<li><strong>${key}:</strong> ${attributes[key]}</li>`;
+                            }
+                            contentHTML += "</ul>";
+                            return contentHTML;
+                        }
+                    };
+                }
+
                 return new FeatureLayer({
                     url: url,
                     title: title,
                     outFields: ["*"],
-                    popupEnabled: true
+                    popupEnabled: true,
+                    popupTemplate: popupTemplate
                 });
             }
 
+            // Map setup
             const map = new Map({
                 basemap: "dark-gray-vector",
                 spatialReference: { wkid: 3857 }
@@ -59,29 +98,37 @@
                 }
             });
 
-            // Define layer groups
-            const basemapLayers = [
-                { key: "changeInImmigrants", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/41", "Change in Immigrant Population (2015-2020)") },
-                { key: "changeInEmigrants", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/1", "Change in Emigrant Population (2015-2020)") },
-                { key: "netMigration", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/42", "Net Migration (2024)") }
-            ];
-
-            const flowlineLayers = [
-                { key: "flowLines1990", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/44", "Migration Volumes (1990-1995)") },
-                { key: "flowLines1995", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/45", "Migration Volumes (1995-2000)") },
-                { key: "flowLines2000", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/48", "Migration Volumes (2000-2005)") },
-                { key: "flowLines2005", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/46", "Migration Volumes (2005-2010)") }
-            ];
-
-            [...basemapLayers, ...flowlineLayers].forEach(item => {
-                map.add(item.layer);
+            // Country layer
+            const countryLayer = new FeatureLayer({
+                url: "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/10",
+                title: "Countries",
+                outFields: ["*"],
+                popupEnabled: true
             });
 
-            // Function to add radio buttons for basemap selection
+            map.add(countryLayer);
+
+            // Basemap layers
+            const basemapLayers = [
+                { key: "changeInImmigrants", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/41", "Change in Immigrant Population (2015-2020)", "changeInImmigrants") },
+                { key: "changeInEmigrants", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/1", "Change in Emigrant Population (2015-2020)", "changeInEmigrants") },
+                { key: "netMigration", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/42", "Net Migration (2024)", "netMigration") }
+            ];
+
+            // Flowline layers
+            const flowlineLayers = [
+                { key: "flowLines1990", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/44", "Migration Volumes 1990-1995", "flowLines1990") },
+                { key: "flowLines1995", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/45", "Migration Volumes 1995-2000", "flowLines1995") },
+                { key: "flowLines2000", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/48", "Migration Volumes 2000-2005", "flowLines2000") },
+                { key: "flowLines2005", layer: createFeatureLayer("https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/46", "Migration Volumes 2005-2010", "flowLines2005") }
+            ];
+
+            [...basemapLayers, ...flowlineLayers].forEach(item => map.add(item.layer));
+
+            // Basemap toggle logic
             function addBasemapToggles() {
                 const form = document.getElementById("basemapForm");
 
-                // "None" radio button for basemaps
                 const noneRadio = document.createElement("input");
                 noneRadio.type = "radio";
                 noneRadio.name = "basemapGroup";
@@ -103,7 +150,6 @@
                 noneDiv.appendChild(noneLabel);
                 form.appendChild(noneDiv);
 
-                // Basemap radio buttons
                 basemapLayers.forEach(item => {
                     const radio = document.createElement("input");
                     radio.type = "radio";
@@ -127,45 +173,9 @@
                     form.appendChild(div);
                 });
             }
-            
-            basemapLayers.forEach(layer => {
-                layer.layer.visible = false;
-            });
 
-            // Function to add radio buttons for flow line selection
-            function addFlowlineToggles() {
-                const form = document.getElementById("flowlineForm");
-
-                flowlineLayers.forEach((item, index) => {
-                    const radio = document.createElement("input");
-                    radio.type = "radio";
-                    radio.name = "flowlineGroup";
-                    radio.id = item.key;
-                    radio.checked = index === 0; // Ensure first layer is active
-                    item.layer.visible = index === 0;
-
-                    radio.addEventListener("change", () => {
-                        flowlineLayers.forEach(layerItem => {
-                            layerItem.layer.visible = layerItem.key === item.key;
-                        });
-                    });
-
-                    const label = document.createElement("label");
-                    label.htmlFor = item.key;
-                    label.innerText = item.layer.title;
-
-                    const div = document.createElement("div");
-                    div.className = "layer-item";
-                    div.appendChild(radio);
-                    div.appendChild(label);
-                    form.appendChild(div);
-                });
-            }
-
-            // Populate toggle menus
             view.when(() => {
                 addBasemapToggles();
-                addFlowlineToggles();
             });
 
             view.popup.autoOpenEnabled = true;
