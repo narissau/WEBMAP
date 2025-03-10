@@ -18,7 +18,7 @@
         <h3>Data Selection</h3>
         <h4>Basemaps</h4>
         <form id="basemapForm"></form>
-        <h4>Flow Lines</h4>
+        <h4>Migration Volumes (Flow Lines)</h4>
         <form id="flowlineForm"></form>
     </div>
 
@@ -28,7 +28,7 @@
             "esri/Map",
             "esri/views/MapView",
             "esri/layers/FeatureLayer"
-        ], function (esriConfig, Map, MapView, FeatureLayer) {
+        ], function (esriConfig, Map, MapView, FeatureLayer) { // anonymous function
 
             esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurGGCFBPLWn4zHTeFKkYXC8xdZ9PlNb6vx_TERSbT8dEWpQ1tlMiIcoahwMafz_F8YVz1F2IzH2PzS8571yH_yIdjFi1pLjVeLbP1qKl9sZqpsSTSUQ-lvcs-aXX4BltylF0Z1XQ_2GX3B_aGBCu2R5TL0OZF2hIp-nuwzzZ7AJQxOxiYAJA3kmvn6SYmKLsw3vJ24gfdcA8uSEghq_BXIkU.AT1_xAwz1ItR"; // Replace with your actual API key
 
@@ -40,7 +40,7 @@
                     outFields: ["*"],
                     popupEnabled: true,
                     popupTemplate: popupTemplate,
-                    visible: false
+                    visible: false // Start hidden
                 });
             }
 
@@ -63,15 +63,23 @@
             });
 
             // Country layer (Always visible)
-            const countryLayer = createFeatureLayer(
-                "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/10",
-                "Countries",
-                {
+            const countryLayer = new FeatureLayer({
+                url: "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/13",
+                title: "WORLD_Origin", // Ensure a title is set
+                outFields: ["*"],
+                popupEnabled: true,
+                popupTemplate: {
                     title: "Country",
-                    content: "<p><b>Name:</b> {name}</p>"
+                    content: "<p><b>Name:</b> {Origin}</p>"
                 }
-            );
+            });
+
+
+            console.log("Country Layer:", countryLayer);
             map.add(countryLayer);
+            countryLayer.when(() => console.log("Country Layer Loaded Successfully"), (error) => console.error("Country Layer Failed to Load:", error));
+
+
 
             // Basemap layers (Start hidden)
             const basemapLayers = [
@@ -110,13 +118,13 @@
                 }
             ];
 
-            // Flowline layers (Start hidden, default: 2005-2010)
+            // Flowline layers
             const flowlineLayers = [
                 {
                     key: "flowLines1990",
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/44",
-                        "Migration Volumes 1990-1995",
+                        "1990-1995",
                         {
                             title: "Migration Flow (1990-1995)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
@@ -127,7 +135,7 @@
                     key: "flowLines1995",
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/45",
-                        "Migration Volumes 1995-2000",
+                        "1995-2000",
                         {
                             title: "Migration Flow (1995-2000)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
@@ -138,7 +146,7 @@
                     key: "flowLines2000",
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/48",
-                        "Migration Volumes 2000-2005",
+                        "2000-2005",
                         {
                             title: "Migration Flow (2000-2005)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
@@ -149,7 +157,7 @@
                     key: "flowLines2005",
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/46",
-                        "Migration Volumes 2005-2010",
+                        "2005-2010",
                         {
                             title: "Migration Flow (2005-2010)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
@@ -241,6 +249,72 @@
                     form.appendChild(div);
                 });
             }
+
+            flowlineLayers.forEach(item => {
+                item.layer.visible = false;
+                item.layer.definitionExpression = "1=0"; // This ensures nothing is shown at startup
+                map.add(item.layer);
+            });
+
+            // Click event for selecting a country and showing flow lines
+            view.on("click", function (event) {
+                view.hitTest(event).then(function (response) {
+                    console.log("🔍 Full Hit Test Response:", response.results);
+
+                    if (response.results.length === 0) {
+                        console.log("❌ Nothing clicked.");
+                        return;
+                    }
+
+                    response.results.forEach((res, index) => {
+                        if (res.graphic && res.graphic.layer) {
+                            console.log(`🔍 Hit Test Result ${index + 1}:`);
+                            console.log(`   - Layer Title: ${res.graphic.layer.title || "Unnamed Layer"}`);
+                            console.log(`   - Layer ID: ${res.graphic.layer.id || "No ID"}`);
+                            console.log(`   - Layer URL: ${res.graphic.layer.url || "No URL"}`);
+                            console.log(`   - Available Attributes:`, res.graphic.attributes);
+                        } else {
+                            console.log("⚠️ Warning: No valid layer found for this graphic.");
+                        }
+                    });
+
+                    console.log("❓ What is the detected layer title?");
+
+                    // Identify the country layer based on its correct name: "WORLD_Origin"
+                    const countryFeature = response.results.find(res =>
+                        res.graphic && res.graphic.layer && res.graphic.layer.url.includes("FeatureServer/13")
+                    );
+
+
+                    if (countryFeature) {
+                        let selectedCountry = countryFeature.graphic.attributes["Origin"];
+
+                        if (selectedCountry) {
+                            console.log(`🎯 Selected Country: ${selectedCountry}`);
+                            console.log(`Applying filter: Origin = '${selectedCountry}'`);
+
+                            flowlineLayers.forEach(layerItem => {
+                                layerItem.layer.definitionExpression = `Origin = '${selectedCountry}'`;
+                                layerItem.layer.visible = true;
+                            });
+                        } else {
+                            console.log("❌ No valid 'Origin' field found in the clicked feature.");
+                            flowlineLayers.forEach(layerItem => {
+                                layerItem.layer.visible = false;
+                                layerItem.layer.definitionExpression = "1=0";
+                            });
+                        }
+                    }
+
+                });
+            });
+
+
+
+
+
+
+            view.popup.autoOpenEnabled = true;
 
             // Populate toggle menus
             view.when(() => {

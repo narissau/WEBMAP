@@ -63,15 +63,23 @@
             });
 
             // Country layer (Always visible)
-            const countryLayer = createFeatureLayer(
-                "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/10",
-                "Countries",
-                {
+            const countryLayer = new FeatureLayer({
+                url: "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/13",
+                title: "WORLD_Origin", // Ensure a title is set
+                outFields: ["*"],
+                popupEnabled: true,
+                popupTemplate: {
                     title: "Country",
-                    content: "<p><b>Name:</b> {name}</p>"
+                    content: "<p><b>Name:</b> {Origin}</p>"
                 }
-            );
+            });
+
+
+            console.log("Country Layer:", countryLayer);
             map.add(countryLayer);
+            countryLayer.when(() => console.log("Country Layer Loaded Successfully"), (error) => console.error("Country Layer Failed to Load:", error));
+
+
 
             // Basemap layers (Start hidden)
             const basemapLayers = [
@@ -241,6 +249,72 @@
                     form.appendChild(div);
                 });
             }
+
+            flowlineLayers.forEach(item => {
+                item.layer.visible = false;
+                item.layer.definitionExpression = "1=0"; // This ensures nothing is shown at startup
+                map.add(item.layer);
+            });
+
+            // Click event for selecting a country and showing flow lines
+            view.on("click", function (event) {
+                view.hitTest(event).then(function (response) {
+                    console.log("🔍 Full Hit Test Response:", response.results);
+
+                    if (response.results.length === 0) {
+                        console.log("❌ Nothing clicked.");
+                        return;
+                    }
+
+                    response.results.forEach((res, index) => {
+                        if (res.graphic && res.graphic.layer) {
+                            console.log(`🔍 Hit Test Result ${index + 1}:`);
+                            console.log(`   - Layer Title: ${res.graphic.layer.title || "Unnamed Layer"}`);
+                            console.log(`   - Layer ID: ${res.graphic.layer.id || "No ID"}`);
+                            console.log(`   - Layer URL: ${res.graphic.layer.url || "No URL"}`);
+                            console.log(`   - Available Attributes:`, res.graphic.attributes);
+                        } else {
+                            console.log("⚠️ Warning: No valid layer found for this graphic.");
+                        }
+                    });
+
+                    console.log("❓ What is the detected layer title?");
+
+                    // Identify the country layer based on its correct name: "WORLD_Origin"
+                    const countryFeature = response.results.find(res =>
+                        res.graphic && res.graphic.layer && res.graphic.layer.url.includes("FeatureServer/13")
+                    );
+
+
+                    if (countryFeature) {
+                        let selectedCountry = countryFeature.graphic.attributes["Origin"];
+
+                        if (selectedCountry) {
+                            console.log(`🎯 Selected Country: ${selectedCountry}`);
+                            console.log(`Applying filter: Origin = '${selectedCountry}'`);
+
+                            flowlineLayers.forEach(layerItem => {
+                                layerItem.layer.definitionExpression = `Origin = '${selectedCountry}'`;
+                                layerItem.layer.visible = true;
+                            });
+                        } else {
+                            console.log("❌ No valid 'Origin' field found in the clicked feature.");
+                            flowlineLayers.forEach(layerItem => {
+                                layerItem.layer.visible = false;
+                                layerItem.layer.definitionExpression = "1=0";
+                            });
+                        }
+                    } 
+
+                });
+            });
+
+
+
+
+
+
+            view.popup.autoOpenEnabled = true;
 
             // Populate toggle menus
             view.when(() => {
