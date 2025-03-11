@@ -22,6 +22,9 @@
     </div>
 
     <script>
+
+        let lastSelectedCountry = null;
+
         require([
             "esri/config",
             "esri/Map",
@@ -215,9 +218,20 @@
 
                     radio.addEventListener("change", () => {
                         flowlineLayers.forEach(layerItem => {
-                            layerItem.layer.visible = layerItem.key === item.key;
+                            if (layerItem.key === item.key) {
+                                layerItem.layer.visible = true;
+                                if (lastSelectedCountry) { // ✅ If a country was already clicked, update the filter
+                                    layerItem.layer.definitionExpression = `Origin = '${lastSelectedCountry}'`;
+                                } else {
+                                    layerItem.layer.definitionExpression = "1=0"; // ✅ Keep it hidden until a country is clicked
+                                }
+                                layerItem.layer.refresh();
+                            } else {
+                                layerItem.layer.visible = false;
+                            }
                         });
                     });
+
 
                     const label = document.createElement("label");
                     label.htmlFor = item.key;
@@ -233,10 +247,11 @@
 
 
             flowlineLayers.forEach(item => {
-                item.layer.visible = false;
+                item.layer.visible = item.default || false;
+                item.layer.definitionExpression = "1=0"; // ✅ Hide all flow lines at startup
                 map.add(item.layer);
-                item.layer.definitionExpression = "1=0"; // This ensures nothing is shown at startup
             });
+
 
             view.on("click", function (event) {
                 view.hitTest(event).then(function (response) {
@@ -250,13 +265,18 @@
                         if (selectedCountry) {
                             console.log(`Selected Country: ${selectedCountry}`);
 
-                            flowlineLayers.forEach(layerItem => {
-                                layerItem.layer.definitionExpression = `Origin = '${selectedCountry}'`;
-                                layerItem.layer.visible = true;
+                            if (selectedCountry) {
+                                lastSelectedCountry = selectedCountry; // ✅ Save the last clicked country
 
-                                // Refresh layer to apply new filter
-                                layerItem.layer.refresh();
-                            });
+                                flowlineLayers.forEach(layerItem => {
+                                    if (layerItem.layer.visible) { // ✅ Apply filter only to the active flowline layer
+                                        layerItem.layer.definitionExpression = `Origin = '${selectedCountry}'`;
+                                        layerItem.layer.refresh();
+                                    }
+                                });
+                            }
+
+
                         }
                     } else {
                         console.log("No country selected.");

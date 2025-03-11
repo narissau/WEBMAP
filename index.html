@@ -265,22 +265,36 @@
                         if (selectedCountry) {
                             console.log(`Selected Country: ${selectedCountry}`);
 
-                            if (selectedCountry) {
-                                lastSelectedCountry = selectedCountry; // ✅ Save the last clicked country
+                            lastSelectedCountry = selectedCountry; // ✅ Save the last clicked country
 
-                                flowlineLayers.forEach(layerItem => {
-                                    if (layerItem.layer.visible) { // ✅ Apply filter only to the active flowline layer
-                                        layerItem.layer.definitionExpression = `Origin = '${selectedCountry}'`;
-                                        layerItem.layer.refresh();
-                                    }
-                                });
-                            }
-
-
+                            flowlineLayers.forEach(layerItem => {
+                                if (layerItem.layer.visible) { // ✅ Apply filter only to the active flowline layer
+                                    layerItem.layer.definitionExpression = `Origin = '${selectedCountry}'`;
+                                    layerItem.layer.refresh();
+                                }
+                            });
                         }
                     } else {
-                        console.log("No country selected.");
+                        // ✅ Check if the click was on a flow line
+                        const flowlineFeature = response.results.find(res =>
+                            res.graphic && res.graphic.layer && flowlineLayers.some(layer => layer.layer === res.graphic.layer)
+                        );
+
+                        if (!flowlineFeature) { // ✅ If not a flow line, clear the flow lines
+                            console.log("Clicked on empty space. Clearing flow lines.");
+
+                            lastSelectedCountry = null; // ✅ Reset selected country
+
+                            flowlineLayers.forEach(layerItem => {
+                                layerItem.layer.definitionExpression = "1=0"; // ✅ Hide all flow lines
+                                layerItem.layer.refresh();
+                            });
+                        } else {
+                            console.log("Clicked on a flow line. Keeping flow lines visible.");
+                        }
                     }
+
+
                 });
             });
 
