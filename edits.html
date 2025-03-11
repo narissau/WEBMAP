@@ -29,23 +29,44 @@
             "esri/config",
             "esri/Map",
             "esri/views/MapView",
-            "esri/layers/FeatureLayer"
-        ], function (esriConfig, Map, MapView, FeatureLayer) {
+            "esri/layers/FeatureLayer",
+            "esri/renderers/SimpleRenderer"
+        ], function (esriConfig, Map, MapView, FeatureLayer, SimpleRenderer) {
 
             esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurGGCFBPLWn4zHTeFKkYXC8xdZ9PlNb6vx_TERSbT8dEWpQ1tlMiIcoahwMafz_F8YVz1F2IzH2PzS8571yH_yIdjFi1pLjVeLbP1qKl9sZqpsSTSUQ-lvcs-aXX4BltylF0Z1XQ_2GX3B_aGBCu2R5TL0OZF2hIp-nuwzzZ7AJQxOxiYAJA3kmvn6SYmKLsw3vJ24gfdcA8uSEghq_BXIkU.AT1_xAwz1ItR"; // Replace with your actual API key
 
-            function createFeatureLayer(url, title, popupTemplate) {
-                return new FeatureLayer({
+            const lightFlowSymbol = {
+                type: "simple-line",
+                color: [255, 255, 255, 0.8], // White lines for Dark Gray Vector
+                width: 1.5
+            };
+
+            const darkFlowSymbol = {
+                type: "simple-line",
+                color: [50, 50, 50, 0.8], // Dark lines for Gray Vector
+                width: 1.5
+            };
+
+            function createFeatureLayer(url, title, popupTemplate, symbol = null) {
+                let layerConfig = {
                     url: url,
                     title: title,
                     outFields: ["*"],
                     popupTemplate: popupTemplate,
                     visible: false
-                });
+                };
+                if (symbol) {
+                    layerConfig.renderer = {
+                        type: "simple",
+                        symbol: symbol
+                    };
+                }
+                return new FeatureLayer(layerConfig);
             }
 
+
             const map = new Map({
-                basemap: "dark-gray-vector"
+                basemap: "gray-vector"
             });
 
             const view = new MapView({
@@ -112,7 +133,8 @@
                         {
                             title: "Migration Flow (1990-1995)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
-                        }
+                        },
+                        darkFlowSymbol
                     )
                 },
                 {
@@ -123,7 +145,8 @@
                         {
                             title: "Migration Flow (1995-2000)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
-                        }
+                        },
+                        darkFlowSymbol
                     )
                 },
                 {
@@ -134,7 +157,8 @@
                         {
                             title: "Migration Flow (2000-2005)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
-                        }
+                        },
+                        darkFlowSymbol
                     )
                 },
                 {
@@ -145,11 +169,13 @@
                         {
                             title: "Migration Flow (2005-2010)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
-                        }
+                        },
+                        darkFlowSymbol
                     ),
                     default: true
                 }
             ];
+
 
             [...basemapLayers, ...flowlineLayers].forEach(item => map.add(item.layer));
 
@@ -157,7 +183,7 @@
             function addBasemapToggles() {
                 const form = document.getElementById("basemapForm");
 
-                // "None" radio button
+                // "None" radio button to clear all basemap layers
                 const noneRadio = document.createElement("input");
                 noneRadio.type = "radio";
                 noneRadio.name = "basemapGroup";
@@ -166,6 +192,7 @@
                 noneRadio.addEventListener("change", () => {
                     basemapLayers.forEach(layerItem => {
                         layerItem.layer.visible = false;
+                        layerItem.layer.refresh();
                     });
                 });
 
@@ -179,16 +206,23 @@
                 noneDiv.appendChild(noneLabel);
                 form.appendChild(noneDiv);
 
-                // Basemap radio buttons
+                // Create radio buttons for basemap layers
                 basemapLayers.forEach(item => {
                     const radio = document.createElement("input");
                     radio.type = "radio";
                     radio.name = "basemapGroup";
                     radio.id = item.key;
                     radio.checked = false;
+
                     radio.addEventListener("change", () => {
                         basemapLayers.forEach(layerItem => {
-                            layerItem.layer.visible = layerItem.key === item.key;
+                            if (layerItem.key === item.key) {
+                                layerItem.layer.visible = true;
+                                layerItem.layer.refresh();
+                            } else {
+                                layerItem.layer.visible = false;
+                                layerItem.layer.refresh();
+                            }
                         });
                     });
 
@@ -203,6 +237,15 @@
                     form.appendChild(div);
                 });
             }
+
+
+
+            basemapLayers.forEach(item => {
+                item.layer.visible = false; // Start hidden
+                map.add(item.layer); // Ensure it's added to the map
+            });
+
+
 
             // Function to add flowline toggles
             function addFlowlineToggles() {
@@ -255,31 +298,56 @@
 
             view.on("click", function (event) {
                 view.hitTest(event).then(function (response) {
+                    // ✅ First, check if a flowline was clicked
+                    const flowlineFeature = response.results.find(res =>
+                        res.graphic && res.graphic.layer && flowlineLayers.some(layer => layer.layer === res.graphic.layer)
+                    );
+
+                    if (flowlineFeature) {
+                        console.log("✅ Clicked on a flowline. Showing flowline popup.");
+                        view.popup.open({
+                            features: [flowlineFeature.graphic],
+                            location: event.mapPoint
+                        });
+                        return; // ✅ Stop further processing so country doesn't get selected
+                    }
+
+                    // ✅ If no flowline was clicked, check if a country was clicked
                     const countryFeature = response.results.find(res =>
                         res.graphic && res.graphic.layer && res.graphic.layer.title === "WORLD_Origin"
                     );
 
                     if (countryFeature) {
                         let selectedCountry = countryFeature.graphic.attributes["Origin"];
+                        console.log(`✅ Clicked on country: ${selectedCountry}`);
 
                         if (selectedCountry) {
-                            console.log(`Selected Country: ${selectedCountry}`);
+                            lastSelectedCountry = selectedCountry;
 
-                            if (selectedCountry) {
-                                lastSelectedCountry = selectedCountry; // ✅ Save the last clicked country
+                            // ✅ Apply filter to show flowlines only for the selected country
+                            flowlineLayers.forEach(layerItem => {
+                                if (layerItem.layer.visible) {
+                                    layerItem.layer.definitionExpression = `Origin = '${selectedCountry}'`;
+                                    layerItem.layer.refresh();
+                                }
+                            });
 
-                                flowlineLayers.forEach(layerItem => {
-                                    if (layerItem.layer.visible) { // ✅ Apply filter only to the active flowline layer
-                                        layerItem.layer.definitionExpression = `Origin = '${selectedCountry}'`;
-                                        layerItem.layer.refresh();
-                                    }
-                                });
-                            }
-
-
+                            view.popup.open({
+                                features: [countryFeature.graphic],
+                                location: event.mapPoint
+                            });
                         }
                     } else {
-                        console.log("No country selected.");
+                        // ✅ If clicked on empty space, reset filters
+                        console.log("✅ Clicked on empty space. Clearing flow lines.");
+                        lastSelectedCountry = null;
+
+                        flowlineLayers.forEach(layerItem => {
+                            layerItem.layer.definitionExpression = "1=0"; // Hide all flow lines
+                            layerItem.layer.refresh();
+                        });
+
+                        view.popup.close();
                     }
                 });
             });
@@ -288,11 +356,44 @@
 
             // Populate toggle menus
             view.when(() => {
+                const toggleContainer = document.createElement("div");
+                toggleContainer.innerHTML = `
+                    <div class="toggle-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="darkModeToggle">
+                            <span class="slider"></span>
+                        </label>
+                        <span>Dark Mode</span>
+                    </div>
+                `;
+                view.ui.add(toggleContainer, "top-right");
+
+                const darkModeToggle = document.getElementById("darkModeToggle");
+
+                darkModeToggle.addEventListener("change", function () {
+                    if (this.checked) {
+                        map.basemap = "dark-gray-vector";
+                        flowlineLayers.forEach(item => {
+                            item.layer.renderer = new SimpleRenderer({ symbol: lightFlowSymbol });
+                            item.layer.refresh();
+                        });
+                    } else {
+                        map.basemap = "gray-vector";
+                        flowlineLayers.forEach(item => {
+                            item.layer.renderer = new SimpleRenderer({ symbol: darkFlowSymbol });
+                            item.layer.refresh();
+                        });
+                    }
+                });
+
                 addBasemapToggles();
                 addFlowlineToggles();
             });
 
+
             view.popup.autoOpenEnabled = true;
+
+
 
         });
     </script>
