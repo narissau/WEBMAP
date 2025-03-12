@@ -73,7 +73,11 @@
                 container: "viewDiv",
                 map: map,
                 center: [0, 20],
-                zoom: 2
+                zoom: 2,
+                constraints: {
+                    minZoom: 1,
+                    maxZoom: 5
+                }
             });
 
             const countryLayer = new FeatureLayer({
@@ -81,8 +85,8 @@
                 title: "WORLD_Origin",
                 outFields: ["*"],
                 popupTemplate: {
-                    title: "Country",
-                    content: "<p><b>Name:</b> {Origin}</p>"
+                    title: "{Origin}",
+                    content: "<b> {TotalMigrants}</b> Migrants Originating from <b>{Origin}</b></p>"
                 }
             });
 
