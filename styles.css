@@ -20,7 +20,7 @@ body,
     padding: 15px;
     border-radius: 8px;
     box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.5);
-    max-height: 300px;
+    max-height: 500px;
     overflow-y: auto;
     width: 16em;
     font-family: Arial, sans-serif;
@@ -120,4 +120,11 @@ input:checked+.slider {
 
 input:checked+.slider:before {
     transform: translateX(20px);
+}
+
+.slider-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
 }

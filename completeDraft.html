@@ -19,7 +19,17 @@
         <form id="basemapForm"></form>
         <h4>Migration Volumes (Flow Lines)</h4>
         <form id="flowlineForm"></form>
+
+        <h4>Minimum Migrant Count</h4>
+        <div class="slider-wrapper">
+            <input type="range" id="migrantSlider" min="0" max="1000000" step="1000" value="1000">
+            <span id="sliderValue">1000</span>+
+        </div>
+
     </div>
+
+
+
 
     <script>
 
@@ -199,6 +209,28 @@
                 }
             ];
 
+            const migrantSlider = document.getElementById("migrantSlider");
+            const sliderValueDisplay = document.getElementById("sliderValue");
+
+            // Update the text label as the slider moves
+            migrantSlider.addEventListener("input", function () {
+                sliderValueDisplay.textContent = this.value;
+            });
+
+            // Update the visible flow lines based on selected country + min migrant count
+            migrantSlider.addEventListener("change", function () {
+                const minMigrants = this.value;
+                flowlineLayers.forEach(layerItem => {
+                    if (layerItem.layer.visible) {
+                        if (lastSelectedCountry) {
+                            layerItem.layer.definitionExpression = `Origin = '${lastSelectedCountry}' AND Migrants >= ${minMigrants}`;
+                        } else {
+                            layerItem.layer.definitionExpression = `Migrants >= ${minMigrants} AND 1=0`; // Hidden until clicked
+                        }
+                        layerItem.layer.refresh();
+                    }
+                });
+            });
 
 
             [...basemapLayers, ...flowlineLayers].forEach(item => map.add(item.layer));
@@ -349,12 +381,15 @@
                             lastSelectedCountry = selectedCountry;
 
                             // Apply filter to show flowlines only for the selected country
+                            const minMigrants = migrantSlider.value;
+
                             flowlineLayers.forEach(layerItem => {
                                 if (layerItem.layer.visible) {
-                                    layerItem.layer.definitionExpression = `Origin = '${selectedCountry}' AND Migrants >= 1000`;
+                                    layerItem.layer.definitionExpression = `Origin = '${selectedCountry}' AND Migrants >= ${minMigrants}`;
                                     layerItem.layer.refresh();
                                 }
                             });
+
 
                             view.popup.open({
                                 features: [countryFeature.graphic],
