@@ -51,12 +51,16 @@
                     title: title,
                     outFields: ["*"],
                     popupTemplate: popupTemplate,
-                    visible: false,
-                    orderBy: [{
-                        field: "Migrants",
-                        order: "desc" // big flow lines drawn last (on top)
-                    }]
+                    visible: false
                 };
+
+                if (useFlowRenderer) {
+                    layerConfig.orderBy = [{
+                        field: "Migrants",
+                        order: "desc"
+                    }];
+                }
+
 
                 if (useFlowRenderer) { // flow line thickness dependent on migrant count
                     layerConfig.renderer = {
