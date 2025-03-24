@@ -54,11 +54,11 @@
                     visible: false,
                     orderBy: [{
                         field: "Migrants",
-                        order: "desc"
+                        order: "desc" // big flow lines drawn last (on top)
                     }]
                 };
 
-                if (useFlowRenderer) {
+                if (useFlowRenderer) { // flow line thickness dependent on migrant count
                     layerConfig.renderer = {
                         type: "simple",
                         symbol: {
@@ -79,7 +79,6 @@
 
                 return new FeatureLayer(layerConfig);
             }
-
 
 
             const map = new Map({
@@ -201,7 +200,7 @@
             const sliderValueDisplay = document.getElementById("sliderValue");
 
             migrantSlider.addEventListener("input", function () {
-                sliderValueDisplay.textContent = this.value;
+                sliderValueDisplay.textContent = this.value; // this.value is the current number on the slider
             });
 
 
@@ -218,9 +217,6 @@
                     }
                 });
             });
-
-
-
 
 
             function addBasemapToggles() {
@@ -341,8 +337,9 @@
             view.on("click", function (event) {
                 view.hitTest(event).then(function (response) {
                     // First, check if a flowline was clicked
-                    const flowlineFeature = response.results.find(res =>
+                    const flowlineFeature = response.results.find(res => // Find the first clicked feature that belongs to one of the flowline layers.
                         res.graphic && res.graphic.layer && flowlineLayers.some(layer => layer.layer === res.graphic.layer)
+                        // .some returns true if at least one item in an array matches a condition. Used to check if a clicked layer is a flowline.
                     );
 
                     if (flowlineFeature) {
@@ -355,7 +352,7 @@
                     }
 
                     // If no flowline was clicked, check if a country was clicked
-                    const countryFeature = response.results.find(res =>
+                    const countryFeature = response.results.find(res => // Find the first feature whose layer title is 'WORLD_Origin'
                         res.graphic && res.graphic.layer && res.graphic.layer.title === "WORLD_Origin"
                     );
 
@@ -438,7 +435,7 @@
                 const darkModeToggle = document.getElementById("darkModeToggle");
 
                 darkModeToggle.addEventListener("change", function () {
-                    const isDark = this.checked;
+                    const isDark = this.checked; // "this." refers to the DOM element the event listener is attached to
 
                     const flowColor = isDark ? [255, 255, 255, 0.8] : [50, 50, 50, 0.8]; // White for dark mode, dark gray for light
 
@@ -462,7 +459,8 @@
                         item.layer.refresh();
                     });
 
-                    map.basemap = isDark ? "dark-gray-vector" : "gray-vector";
+                    map.basemap = isDark ? "dark-gray-vector" : "gray-vector"; // condition ? valueIfTrue : valueIfFalse
+
                 });
 
 
