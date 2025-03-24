@@ -394,7 +394,7 @@
                 });
             });
 
-            view.when(() => {
+            view.when(() => { // view.when waits for the map view to finish loading
                 const toggleContainer = document.createElement("div");
                 toggleContainer.innerHTML = `
                     <div class="toggle-container">
