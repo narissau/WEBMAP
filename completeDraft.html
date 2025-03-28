@@ -22,18 +22,67 @@
 
         <h4>Minimum Migrant Count</h4>
         <div class="slider-wrapper">
-            <input type="range" id="migrantSlider" min="0" max="1000000" step="1000" value="1000">
-            <span id="sliderValue">1000</span>+
+            <input type="range" id="migrantSlider" min="0" max="1000000" step="10000" value="0">
+            <datalist id="tickmarks">
+                <option value="0"></option>
+                <option value="100000"></option>
+                <option value="250000"></option>
+                <option value="500000"></option>
+                <option value="1000000"></option>
+            </datalist>
+            <span id="sliderValue">0</span>+
         </div>
 
     </div>
 
 
-
-
     <script>
 
         let lastSelectedCountry = null;
+
+        // Define globally (outside the click handler)
+
+        // Enhanced global animation function with distinct color for visual hierarchy
+        function animateFlowLines(layer) {
+            const animationDuration = 2000;  // 1.2 seconds
+            const frameRate = 60;
+            const totalFrames = animationDuration / (1000 / frameRate);
+            let currentFrame = 0;
+
+            const isDark = document.getElementById("darkModeToggle").checked;
+            const lineColor = isDark ? [0, 255, 255] : [0, 160, 200]; // Cyan in dark, darker turquoise in light mode
+
+            function animateStep() {
+                currentFrame++;
+                const progress = currentFrame / totalFrames;
+                const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+                layer.renderer = {
+                    type: "simple",
+                    symbol: {
+                        type: "simple-line",
+                        color: [...lineColor, easedProgress * 0.9],  // Animated opacity
+                        width: easedProgress * 10
+                    },
+                    visualVariables: [{
+                        type: "size",
+                        field: "Migrants",
+                        minDataValue: 1000,
+                        maxDataValue: 1000000,
+                        minSize: `${0.5 * easedProgress}px`,
+                        maxSize: `${12 * easedProgress}px`
+                    }]
+                };
+
+                layer.refresh();
+
+                if (currentFrame < totalFrames) {
+                    requestAnimationFrame(animateStep);
+                }
+            }
+
+            animateStep();
+        }
 
         require([
             "esri/config",
@@ -45,17 +94,7 @@
 
             esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurGGCFBPLWn4zHTeFKkYXC8xdZ9PlNb6vx_TERSbT8dEWpQ1tlMiIcoahwMafz_F8YVz1F2IzH2PzS8571yH_yIdjFi1pLjVeLbP1qKl9sZqpsSTSUQ-lvcs-aXX4BltylF0Z1XQ_2GX3B_aGBCu2R5TL0OZF2hIp-nuwzzZ7AJQxOxiYAJA3kmvn6SYmKLsw3vJ24gfdcA8uSEghq_BXIkU.AT1_xAwz1ItR"; // Replace with your actual API key
 
-            // const lightFlowSymbol = {
-            //     type: "simple-line",
-            //     color: [255, 255, 255, 0.8],
-            //     width: 1.5
-            // };
 
-            // const darkFlowSymbol = {
-            //     type: "simple-line",
-            //     color: [50, 50, 50, 0.8],
-            //     width: 1.5
-            // };
 
             function createFeatureLayer(url, title, popupTemplate, useFlowRenderer = false) {
                 let layerConfig = {
@@ -63,25 +102,29 @@
                     title: title,
                     outFields: ["*"],
                     popupTemplate: popupTemplate,
-                    visible: false,
-                    orderBy: [{
-                        field: "Migrants",
-                        order: "desc" // ✅ Thicker lines on top
-                    }]
+                    visible: false
                 };
 
                 if (useFlowRenderer) {
+                    layerConfig.orderBy = [{
+                        field: "Migrants",
+                        order: "desc"
+                    }];
+                }
+
+
+                if (useFlowRenderer) { // flow line thickness dependent on migrant count
                     layerConfig.renderer = {
                         type: "simple",
                         symbol: {
                             type: "simple-line",
                             color: [50, 50, 50, 0.8],
-                            width: 1
+                            width: 0
                         },
                         visualVariables: [{
                             type: "size",
                             field: "Migrants",
-                            minDataValue: 5000,
+                            minDataValue: 1000,
                             maxDataValue: 1000000,
                             minSize: "0.5px",
                             maxSize: "8px"
@@ -91,7 +134,6 @@
 
                 return new FeatureLayer(layerConfig);
             }
-
 
 
             const map = new Map({
@@ -115,7 +157,7 @@
                 outFields: ["*"],
                 popupTemplate: {
                     title: "{Origin}",
-                    content: "<b> {TotalMigrants}</b> Migrants Originating from <b>{Origin}</b></p>"
+                    content: "<b> {TotalMigrants}</b> Migrants Originated from <b>{Origin}</b></p>"
                 }
             });
 
@@ -167,7 +209,7 @@
                             title: "Migration Flow (1990-1995)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
                         },
-                        true // ✅ useFlowRenderer enabled
+                        true
                     )
                 },
                 {
@@ -212,12 +254,11 @@
             const migrantSlider = document.getElementById("migrantSlider");
             const sliderValueDisplay = document.getElementById("sliderValue");
 
-            // Update the text label as the slider moves
             migrantSlider.addEventListener("input", function () {
-                sliderValueDisplay.textContent = this.value;
+                sliderValueDisplay.textContent = this.value; // this.value is the current number on the slider
             });
 
-            // Update the visible flow lines based on selected country + min migrant count
+
             migrantSlider.addEventListener("change", function () {
                 const minMigrants = this.value;
                 flowlineLayers.forEach(layerItem => {
@@ -231,9 +272,6 @@
                     }
                 });
             });
-
-
-            [...basemapLayers, ...flowlineLayers].forEach(item => map.add(item.layer));
 
 
             function addBasemapToggles() {
@@ -298,31 +336,34 @@
 
             basemapLayers.forEach(item => {
                 item.layer.visible = false; // Start hidden
-                map.add(item.layer); // Ensure it's added to the map
+                map.add(item.layer);
             });
-
 
 
             // Function to add flowline toggles
             function addFlowlineToggles() {
                 const form = document.getElementById("flowlineForm");
 
-                flowlineLayers.forEach((item, index) => {
+                flowlineLayers.forEach((item) => {
                     const radio = document.createElement("input");
                     radio.type = "radio";
                     radio.name = "flowlineGroup";
                     radio.id = item.key;
-                    radio.checked = item.default || false; // Make 2005-2010 default
+                    radio.checked = item.default || false;
                     item.layer.visible = item.default || false;
 
                     radio.addEventListener("change", () => {
+                        const minMigrants = migrantSlider.value; // ← Important addition!
+
                         flowlineLayers.forEach(layerItem => {
                             if (layerItem.key === item.key) {
                                 layerItem.layer.visible = true;
-                                if (lastSelectedCountry) { // If a country was already clicked, update the filter
-                                    layerItem.layer.definitionExpression = `Origin = '${lastSelectedCountry}'`;
+                                if (lastSelectedCountry) {
+                                    // Important: Include minMigrants filter here
+                                    layerItem.layer.definitionExpression = `Origin = '${lastSelectedCountry}' AND Migrants >= ${minMigrants}`;
+                                    animateFlowLines(layerItem.layer);
                                 } else {
-                                    layerItem.layer.definitionExpression = "1=0"; // Keep it hidden until a country is clicked
+                                    layerItem.layer.definitionExpression = "1=0";
                                 }
                                 layerItem.layer.refresh();
                             } else {
@@ -330,7 +371,6 @@
                             }
                         });
                     });
-
 
                     const label = document.createElement("label");
                     label.htmlFor = item.key;
@@ -345,30 +385,41 @@
             }
 
 
+
             flowlineLayers.forEach(item => {
                 item.layer.visible = item.default || false;
                 item.layer.definitionExpression = "1=0"; // Hide all flow lines at startup
                 map.add(item.layer);
             });
 
-
             view.on("click", function (event) {
                 view.hitTest(event).then(function (response) {
-                    // First, check if a flowline was clicked
+
+                    // Check if a flowline was clicked
+                    const visibleFlowLayer = flowlineLayers.find(item => item.layer.visible)?.layer;
+
                     const flowlineFeature = response.results.find(res =>
-                        res.graphic && res.graphic.layer && flowlineLayers.some(layer => layer.layer === res.graphic.layer)
+                        res.graphic && res.graphic.layer === visibleFlowLayer
                     );
 
                     if (flowlineFeature) {
                         console.log("Clicked on a flowline. Showing flowline popup.");
-                        view.popup.open({
-                            features: [flowlineFeature.graphic],
-                            location: event.mapPoint
-                        });
-                        return; // Stop further processing so country doesn't get selected
+
+                        const graphic = flowlineFeature.graphic;
+                        graphic.popupTemplate = graphic.layer.popupTemplate;
+
+                        view.popup.close();
+                        setTimeout(() => {
+                            view.popup.open({
+                                features: [graphic],
+                                location: event.mapPoint
+                            });
+                        }, 50);
+
+                        return;
                     }
 
-                    // If no flowline was clicked, check if a country was clicked
+                    // Check if a country was clicked
                     const countryFeature = response.results.find(res =>
                         res.graphic && res.graphic.layer && res.graphic.layer.title === "WORLD_Origin"
                     );
@@ -379,17 +430,17 @@
 
                         if (selectedCountry) {
                             lastSelectedCountry = selectedCountry;
-
-                            // Apply filter to show flowlines only for the selected country
                             const minMigrants = migrantSlider.value;
 
                             flowlineLayers.forEach(layerItem => {
                                 if (layerItem.layer.visible) {
                                     layerItem.layer.definitionExpression = `Origin = '${selectedCountry}' AND Migrants >= ${minMigrants}`;
                                     layerItem.layer.refresh();
+
+                                    // Trigger animation on selection
+                                    animateFlowLines(layerItem.layer);
                                 }
                             });
-
 
                             view.popup.open({
                                 features: [countryFeature.graphic],
@@ -397,12 +448,11 @@
                             });
                         }
                     } else {
-                        // If clicked on empty space, reset filters
                         console.log("Clicked on empty space. Clearing flow lines.");
                         lastSelectedCountry = null;
 
                         flowlineLayers.forEach(layerItem => {
-                            layerItem.layer.definitionExpression = "1=0"; // Hide all flow lines
+                            layerItem.layer.definitionExpression = "1=0";
                             layerItem.layer.refresh();
                         });
 
@@ -411,10 +461,8 @@
                 });
             });
 
-            view.popup.autoOpenEnabled = true;
 
-            // Populate toggle menus
-            view.when(() => {
+            view.when(() => { // view.when waits for the map view to finish loading
                 const toggleContainer = document.createElement("div");
                 toggleContainer.innerHTML = `
                     <div class="toggle-container">
@@ -429,7 +477,7 @@
 
                 flowlineLayers.forEach(item => {
                     const isDark = document.getElementById("darkModeToggle").checked;
-                    const flowColor = isDark ? [255, 255, 255, 0.8] : [50, 50, 50, 0.8];
+                    const flowColor = isDark ? [0, 255, 255] : [0, 160, 200];
 
                     item.layer.renderer = {
                         type: "simple",
@@ -448,23 +496,21 @@
                         }]
                     };
 
-                    item.layer.refresh(); // 🔁 Make sure the new renderer is reflected visually
+                    item.layer.refresh();
                 });
-
 
                 const darkModeToggle = document.getElementById("darkModeToggle");
 
                 darkModeToggle.addEventListener("change", function () {
                     const isDark = this.checked;
-
-                    const flowColor = isDark ? [255, 255, 255, 0.8] : [50, 50, 50, 0.8]; // White for dark mode, dark gray for light
+                    const flowColor = isDark ? [0, 255, 255] : [0, 160, 200];
 
                     flowlineLayers.forEach(item => {
                         item.layer.renderer = {
                             type: "simple",
                             symbol: {
                                 type: "simple-line",
-                                color: flowColor,
+                                color: [...flowColor, 0.9],
                                 width: 1
                             },
                             visualVariables: [{
@@ -477,10 +523,16 @@
                             }]
                         };
                         item.layer.refresh();
+
+                        // Immediately re-trigger animation if a country is currently selected
+                        if (item.layer.visible && lastSelectedCountry) {
+                            animateFlowLines(item.layer);
+                        }
                     });
 
                     map.basemap = isDark ? "dark-gray-vector" : "gray-vector";
                 });
+
 
 
                 addBasemapToggles();
