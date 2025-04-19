@@ -64,7 +64,7 @@
 
         // Define globally (outside the click handler)
 
-        // Enhanced global animation function with distinct color for visual hierarchy
+    // Enhanced global animation function with distinct color for visual hierarchy
         function animateFlowLines(layer) {
             const animationDuration = 2000;  // 2 seconds
             const frameRate = 60;
@@ -242,7 +242,7 @@
                 }
             });
 
-
+            
 
             const countryLayer = new FeatureLayer({
                 url: "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/13",
@@ -460,6 +460,25 @@
                 map.add(item.layer);
             });
 
+            // Format Net Migration legend to 1 decimal place
+            const netMigrationLayer = basemapLayers.find(b => b.key === "netMigration")?.layer;
+            if (netMigrationLayer) {
+                netMigrationLayer.when(() => {
+                    const renderer = netMigrationLayer.renderer;
+
+                    if (renderer.type === "class-breaks" && renderer.classBreakInfos) {
+                        renderer.classBreakInfos.forEach(breakInfo => {
+                            const min = Number(breakInfo.minValue).toFixed(1);
+                            const max = Number(breakInfo.maxValue).toFixed(1);
+                            breakInfo.label = `${min} to ${max}`;
+                        });
+                        netMigrationLayer.renderer = renderer;
+                        netMigrationLayer.refresh();
+                    }
+                });
+            }
+
+
 
             // Function to add flowline toggles
             function addFlowlineToggles() {
@@ -644,7 +663,7 @@
                         }]
                     };
 
-                    item.layer.refresh();
+                    item.layer.refresh(); 
                 });
 
                 const darkModeToggle = document.getElementById("darkModeToggle");
@@ -700,44 +719,6 @@
                     infoPanel.style.display = "block";
                     reopenInfoBtn.style.display = "none";
                 });
-
-                // ✅ Final fix: Detect popup close using internal "popup.visible" and clear lines
-                // view.popup.watch("visible", (visible) => {
-                //     if (!visible && lastSelectedCountry) {
-                //         console.log("Popup was closed. Clearing flowlines.");
-
-                //         lastSelectedCountry = null;
-
-                //         flowlineLayers.forEach((layerItem) => {
-                //             const layer = layerItem.layer;
-
-                //             // 🔁 Immediately clear data filter and reset rendering
-                //             layer.definitionExpression = "1=0";
-
-                //             const isDark = document.getElementById("darkModeToggle").checked;
-                //             const flowColor = isDark ? [0, 255, 255, 0] : [0, 160, 200, 0];
-
-                //             layer.renderer = {
-                //                 type: "simple",
-                //                 symbol: {
-                //                     type: "simple-line",
-                //                     color: flowColor,
-                //                     width: 0
-                //                 },
-                //                 visualVariables: [{
-                //                     type: "size",
-                //                     field: "Migrants",
-                //                     minDataValue: 1000,
-                //                     maxDataValue: 1000000,
-                //                     minSize: "0px",
-                //                     maxSize: "0px"
-                //                 }]
-                //             };
-
-                //             layer.refresh();
-                //         });
-                //     }
-                // });
 
                 legend = new Legend({
                     view: view,
