@@ -13,7 +13,29 @@
 <body>
     <div id="viewDiv"></div>
 
+    <div id="infoPanel" class="info-panel">
+        <div class="info-header">
+            <span>ℹ️ Info</span>
+            <button id="toggleInfoBtn">✕</button>
+        </div>
+        <div class="info-body">
+            <h2>Global Migration Explorer</h2>
+            <p>
+                This interactive map visualizes international migration patterns from 1990 to 2020.
+                Select a country to see where its people moved during the selected period.
+                Use the filters and basemap layers below to explore trends, volumes, and net changes in migration.
+            </p>
+            <p><b>Tip:</b> Use the slider to filter by minimum migrant counts, and switch basemaps to view changes in
+                immigration, emigration, and net migration.</p>
+        </div>
+    </div>
+    <!-- 🔘 Reopen Info Panel Button -->
+    <button id="reopenInfoBtn" class="reopen-btn" style="display: none;">?</button>
+
+
     <div id="layerControls">
+
+
         <h3>Data Selection</h3>
         <h4>Basemaps</h4>
         <form id="basemapForm"></form>
@@ -22,28 +44,148 @@
 
         <h4>Minimum Migrant Count</h4>
         <div class="slider-wrapper">
-            <input type="range" id="migrantSlider" min="0" max="1000000" step="1000" value="1000">
-            <span id="sliderValue">1000</span>+
+            <input type="range" id="migrantSlider" min="0" max="6" step="0.1" value="0">
+            <span id="sliderValue">0</span>+
+
         </div>
 
     </div>
 
+    <div id="legendDiv" class="legend-panel"></div>
 
     <script>
 
+        let legend;
+
+        let defaultFlowlineLayer = null;
+
+
         let lastSelectedCountry = null;
+
+        // Define globally (outside the click handler)
+
+        // Enhanced global animation function with distinct color for visual hierarchy
+        function animateFlowLines(layer) {
+            const animationDuration = 2000;  // 2 seconds
+            const frameRate = 60;
+            const totalFrames = animationDuration / (1000 / frameRate);
+            let currentFrame = 0;
+
+            const isDark = document.getElementById("darkModeToggle").checked;
+            const lineColor = isDark ? [0, 255, 255] : [0, 160, 200]; // Cyan in dark, darker turquoise in light mode
+
+            function animateStep() {
+                currentFrame++;
+                const progress = currentFrame / totalFrames;
+                const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+                layer.renderer = {
+                    type: "simple",
+                    symbol: {
+                        type: "simple-line",
+                        color: [...lineColor, easedProgress * 0.9],  // Animated opacity
+                        width: easedProgress * 10
+                    },
+                    visualVariables: [{
+                        type: "size",
+                        field: "Migrants",
+                        minDataValue: 1000,
+                        maxDataValue: 1000000,
+                        minSize: `${0.5 * easedProgress}px`,
+                        maxSize: `${12 * easedProgress}px`
+                    }]
+                };
+
+                layer.refresh();
+
+                if (currentFrame < totalFrames) {
+                    requestAnimationFrame(animateStep);
+                }
+            }
+
+            animateStep();
+        }
+
+
+        function fadeOutFlowLines(layer) {
+            const animationDuration = 800;
+            const frameRate = 60;
+            const totalFrames = animationDuration / (1000 / frameRate);
+            let currentFrame = 0;
+
+            const isDark = document.getElementById("darkModeToggle").checked;
+            const lineColor = isDark ? [0, 255, 255] : [0, 160, 200];
+
+            function animateStep() {
+                currentFrame++;
+                const progress = currentFrame / totalFrames;
+                const easedProgress = 1 - Math.pow(1 - progress, 3); // smooth ease-out
+
+                layer.renderer = {
+                    type: "simple",
+                    symbol: {
+                        type: "simple-line",
+                        color: [
+                            lineColor[0],
+                            lineColor[1],
+                            lineColor[2],
+                            Math.max(0, (1 - easedProgress) * 0.9) // fade opacity smoothly to 0
+                        ],
+                        width: Math.max(0, (1 - easedProgress) * 10) // reduce width smoothly to 0
+                    },
+                    visualVariables: [{
+                        type: "size",
+                        field: "Migrants",
+                        minDataValue: 1000,
+                        maxDataValue: 1000000,
+                        minSize: `${Math.max(0, (1 - easedProgress) * 0.5)}px`,
+                        maxSize: `${Math.max(0, (1 - easedProgress) * 12)}px`
+                    }]
+                };
+
+                layer.refresh();
+
+                if (currentFrame < totalFrames) {
+                    requestAnimationFrame(animateStep);
+                } else {
+                    // Explicitly reset to fully hidden
+                    layer.definitionExpression = "1=0";
+
+                    // Reset renderer to clearly defined initial state
+                    layer.renderer = {
+                        type: "simple",
+                        symbol: {
+                            type: "simple-line",
+                            color: [...lineColor, 0], // fully transparent
+                            width: 0
+                        },
+                        visualVariables: [{
+                            type: "size",
+                            field: "Migrants",
+                            minDataValue: 1000,
+                            maxDataValue: 1000000,
+                            minSize: "0px",
+                            maxSize: "0px"
+                        }]
+                    };
+                    layer.refresh();
+                }
+            }
+
+            animateStep();
+        }
 
         require([
             "esri/config",
             "esri/Map",
             "esri/views/MapView",
             "esri/layers/FeatureLayer",
-            "esri/renderers/SimpleRenderer"
-        ], function (esriConfig, Map, MapView, FeatureLayer, SimpleRenderer) {
+            "esri/renderers/SimpleRenderer",
+            "esri/widgets/Legend"
+        ], function (esriConfig, Map, MapView, FeatureLayer, SimpleRenderer, Legend) {
 
-            esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurGGCFBPLWn4zHTeFKkYXC8xdZ9PlNb6vx_TERSbT8dEWpQ1tlMiIcoahwMafz_F8YVz1F2IzH2PzS8571yH_yIdjFi1pLjVeLbP1qKl9sZqpsSTSUQ-lvcs-aXX4BltylF0Z1XQ_2GX3B_aGBCu2R5TL0OZF2hIp-nuwzzZ7AJQxOxiYAJA3kmvn6SYmKLsw3vJ24gfdcA8uSEghq_BXIkU.AT1_xAwz1ItR"; // Replace with your actual API key
+            esriConfig.apiKey = "AAPTxy8BH1VEsoebNVZXo8HurGGCFBPLWn4zHTeFKkYXC8xdZ9PlNb6vx_TERSbT8dEWpQ1tlMiIcoahwMafz_F8YVz1F2IzH2PzS8571yH_yIdjFi1pLjVeLbP1qKl9sZqpsSTSUQ-lvcs-aXX4BltylF0Z1XQ_2GX3B_aGBCu2R5TL0OZF2hIp-nuwzzZ7AJQxOxiYAJA3kmvn6SYmKLsw3vJ24gfdcA8uSEghq_BXIkU.AT1_xAwz1ItR";
 
-            
 
             function createFeatureLayer(url, title, popupTemplate, useFlowRenderer = false) {
                 let layerConfig = {
@@ -51,25 +193,29 @@
                     title: title,
                     outFields: ["*"],
                     popupTemplate: popupTemplate,
-                    visible: false,
-                    orderBy: [{
-                        field: "Migrants",
-                        order: "desc" // ✅ Thicker lines on top
-                    }]
+                    visible: false
                 };
 
                 if (useFlowRenderer) {
+                    layerConfig.orderBy = [{
+                        field: "Migrants",
+                        order: "desc"
+                    }];
+                }
+
+
+                if (useFlowRenderer) { // flow line thickness dependent on migrant count
                     layerConfig.renderer = {
                         type: "simple",
                         symbol: {
                             type: "simple-line",
                             color: [50, 50, 50, 0.8],
-                            width: 1
+                            width: 0
                         },
                         visualVariables: [{
                             type: "size",
                             field: "Migrants",
-                            minDataValue: 5000,
+                            minDataValue: 1000,
                             maxDataValue: 1000000,
                             minSize: "0.5px",
                             maxSize: "8px"
@@ -79,7 +225,6 @@
 
                 return new FeatureLayer(layerConfig);
             }
-
 
 
             const map = new Map({
@@ -97,14 +242,17 @@
                 }
             });
 
+
+
             const countryLayer = new FeatureLayer({
                 url: "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/13",
-                title: "WORLD_Origin",
+                title: "Countries",
                 outFields: ["*"],
                 popupTemplate: {
                     title: "{Origin}",
-                    content: "<b> {TotalMigrants}</b> Migrants Originating from <b>{Origin}</b></p>"
-                }
+                    content: "<b> {TotalMigrants}</b> Migrants Originated from <b>{Origin}</b></p>"
+                },
+                listMode: "hide"
             });
 
             map.add(countryLayer);
@@ -155,7 +303,7 @@
                             title: "Migration Flow (1990-1995)",
                             content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
                         },
-                        true // ✅ useFlowRenderer enabled
+                        true
                     )
                 },
                 {
@@ -173,7 +321,7 @@
                 {
                     key: "flowLines2000",
                     layer: createFeatureLayer(
-                        "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/48",
+                        "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/54",
                         "2000-2005",
                         {
                             title: "Migration Flow (2000-2005)",
@@ -200,28 +348,46 @@
             const migrantSlider = document.getElementById("migrantSlider");
             const sliderValueDisplay = document.getElementById("sliderValue");
 
-            // Update the text label as the slider moves
+            // Converts slider value to migrants (logarithmic)
+            function sliderValueToMigrants(value) {
+                return Math.round(Math.pow(10, value));
+            }
+
+            // Converts migrant value to readable format
+            function formatMigrantValue(value) {
+                if (value >= 1000000) {
+                    return "1000000";
+                } else if (value >= 1000) {
+                    return (value / 1000).toFixed(1) + "K";
+                } else {
+                    return value.toString();
+                }
+            }
+
+
+            // Update displayed slider value
             migrantSlider.addEventListener("input", function () {
-                sliderValueDisplay.textContent = this.value;
+                const migrants = sliderValueToMigrants(this.value);
+                sliderValueDisplay.textContent = formatMigrantValue(migrants);
             });
 
-            // Update the visible flow lines based on selected country + min migrant count
+            // Update layers when slider value changes
             migrantSlider.addEventListener("change", function () {
-                const minMigrants = this.value;
+                const minMigrants = sliderValueToMigrants(this.value);
+
                 flowlineLayers.forEach(layerItem => {
                     if (layerItem.layer.visible) {
                         if (lastSelectedCountry) {
                             layerItem.layer.definitionExpression = `Origin = '${lastSelectedCountry}' AND Migrants >= ${minMigrants}`;
                         } else {
-                            layerItem.layer.definitionExpression = `Migrants >= ${minMigrants} AND 1=0`; // Hidden until clicked
+                            layerItem.layer.definitionExpression = "1=0";
                         }
                         layerItem.layer.refresh();
+                        animateFlowLines(layerItem.layer);
                     }
                 });
             });
 
-
-            
 
 
             function addBasemapToggles() {
@@ -260,14 +426,19 @@
 
                     radio.addEventListener("change", () => {
                         basemapLayers.forEach(layerItem => {
-                            if (layerItem.key === item.key) {
-                                layerItem.layer.visible = true;
-                                layerItem.layer.refresh();
-                            } else {
-                                layerItem.layer.visible = false;
-                                layerItem.layer.refresh();
-                            }
+                            const isActive = layerItem.key === item.key;
+                            layerItem.layer.visible = isActive;
+                            layerItem.layer.refresh();
                         });
+
+                        if (legend) {
+                            legend.layerInfos = [{
+                                layer: item.layer,
+                                title: item.layer.title
+                            }];
+                        }
+
+
                     });
 
                     const label = document.createElement("label");
@@ -286,38 +457,52 @@
 
             basemapLayers.forEach(item => {
                 item.layer.visible = false; // Start hidden
-                map.add(item.layer); // Ensure it's added to the map
+                map.add(item.layer);
             });
-
 
 
             // Function to add flowline toggles
             function addFlowlineToggles() {
                 const form = document.getElementById("flowlineForm");
 
-                flowlineLayers.forEach((item, index) => {
+                flowlineLayers.forEach((item) => {
                     const radio = document.createElement("input");
                     radio.type = "radio";
                     radio.name = "flowlineGroup";
                     radio.id = item.key;
-                    radio.checked = item.default || false; // Make 2005-2010 default
+                    radio.checked = item.default || false;
                     item.layer.visible = item.default || false;
 
                     radio.addEventListener("change", () => {
+                        const minMigrants = sliderValueToMigrants(migrantSlider.value);
+
                         flowlineLayers.forEach(layerItem => {
-                            if (layerItem.key === item.key) {
-                                layerItem.layer.visible = true;
-                                if (lastSelectedCountry) { // If a country was already clicked, update the filter
-                                    layerItem.layer.definitionExpression = `Origin = '${lastSelectedCountry}'`;
-                                } else {
-                                    layerItem.layer.definitionExpression = "1=0"; // Keep it hidden until a country is clicked
-                                }
-                                layerItem.layer.refresh();
-                            } else {
-                                layerItem.layer.visible = false;
+                            const isActive = layerItem.key === item.key;
+
+                            layerItem.layer.visible = isActive;
+
+                            if (isActive) {
+                                layerItem.layer.definitionExpression = lastSelectedCountry
+                                    ? `Origin = '${lastSelectedCountry}' AND Migrants >= ${minMigrants}`
+                                    : "1=0";
+
+                                animateFlowLines(layerItem.layer);
+                            } else if (layerItem.layer.visible) {
+                                fadeOutFlowLines(layerItem.layer);
                             }
+
+                            layerItem.layer.refresh();
                         });
+
+                        // ✅ Update the legend to only show the selected flowline layer
+                        if (legend) {
+                            legend.layerInfos = [{
+                                layer: item.layer,
+                                title: item.layer.title
+                            }];
+                        }
                     });
+
 
 
                     const label = document.createElement("label");
@@ -333,32 +518,48 @@
             }
 
 
+
             flowlineLayers.forEach(item => {
                 item.layer.visible = item.default || false;
                 item.layer.definitionExpression = "1=0"; // Hide all flow lines at startup
                 map.add(item.layer);
+
+                if (item.default) {
+                    defaultFlowlineLayer = item.layer;
+                }
             });
 
 
             view.on("click", function (event) {
                 view.hitTest(event).then(function (response) {
-                    // First, check if a flowline was clicked
+
+                    // Check if a flowline was clicked
+                    const visibleFlowLayer = flowlineLayers.find(item => item.layer.visible)?.layer;
+
                     const flowlineFeature = response.results.find(res =>
-                        res.graphic && res.graphic.layer && flowlineLayers.some(layer => layer.layer === res.graphic.layer)
+                        res.graphic && res.graphic.layer === visibleFlowLayer
                     );
 
                     if (flowlineFeature) {
                         console.log("Clicked on a flowline. Showing flowline popup.");
-                        view.popup.open({
-                            features: [flowlineFeature.graphic],
-                            location: event.mapPoint
-                        });
-                        return; // Stop further processing so country doesn't get selected
+
+                        const graphic = flowlineFeature.graphic;
+                        graphic.popupTemplate = graphic.layer.popupTemplate;
+
+                        view.popup.close();
+                        setTimeout(() => {
+                            view.popup.open({
+                                features: [graphic],
+                                location: event.mapPoint
+                            });
+                        }, 50);
+
+                        return;
                     }
 
-                    // If no flowline was clicked, check if a country was clicked
+                    // Check if a country was clicked
                     const countryFeature = response.results.find(res =>
-                        res.graphic && res.graphic.layer && res.graphic.layer.title === "WORLD_Origin"
+                        res.graphic && res.graphic.layer && res.graphic.layer.title === "Countries"
                     );
 
                     if (countryFeature) {
@@ -367,16 +568,23 @@
 
                         if (selectedCountry) {
                             lastSelectedCountry = selectedCountry;
+                            const minMigrants = sliderValueToMigrants(migrantSlider.value);
 
-                            // Apply filter to show flowlines only for the selected country
-                            const minMigrants = migrantSlider.value;
 
-                            flowlineLayers.forEach(layerItem => {
-                                if (layerItem.layer.visible) {
-                                    layerItem.layer.definitionExpression = `Origin = '${selectedCountry}' AND Migrants >= ${minMigrants}`;
-                                    layerItem.layer.refresh();
-                                }
-                            });
+                            let activeFlowLayer = flowlineLayers.find(item => item.layer.visible)?.layer;
+
+                            // Fallback: activate the default flowline layer
+                            if (!activeFlowLayer && defaultFlowlineLayer) {
+                                activeFlowLayer = defaultFlowlineLayer;
+                                defaultFlowlineLayer.visible = true;
+                                defaultFlowlineLayer.refresh();
+                            }
+
+                            if (activeFlowLayer) {
+                                activeFlowLayer.definitionExpression = `Origin = '${selectedCountry}' AND Migrants >= ${minMigrants}`;
+                                activeFlowLayer.refresh();
+                                animateFlowLines(activeFlowLayer);
+                            }
 
 
                             view.popup.open({
@@ -385,22 +593,24 @@
                             });
                         }
                     } else {
-                        // If clicked on empty space, reset filters
                         console.log("Clicked on empty space. Clearing flow lines.");
                         lastSelectedCountry = null;
 
                         flowlineLayers.forEach(layerItem => {
-                            layerItem.layer.definitionExpression = "1=0"; // Hide all flow lines
-                            layerItem.layer.refresh();
+                            if (layerItem.layer.visible) {
+                                fadeOutFlowLines(layerItem.layer);
+                            }
                         });
+
 
                         view.popup.close();
                     }
                 });
             });
 
-                        // Populate toggle menus
-            view.when(() => {
+
+            view.when(() => { // view.when waits for the map view to finish loading
+
                 const toggleContainer = document.createElement("div");
                 toggleContainer.innerHTML = `
                     <div class="toggle-container">
@@ -415,7 +625,7 @@
 
                 flowlineLayers.forEach(item => {
                     const isDark = document.getElementById("darkModeToggle").checked;
-                    const flowColor = isDark ? [255, 255, 255, 0.8] : [50, 50, 50, 0.8];
+                    const flowColor = isDark ? [0, 255, 255] : [0, 160, 200];
 
                     item.layer.renderer = {
                         type: "simple",
@@ -434,23 +644,21 @@
                         }]
                     };
 
-                    item.layer.refresh(); // 🔁 Make sure the new renderer is reflected visually
+                    item.layer.refresh();
                 });
-
 
                 const darkModeToggle = document.getElementById("darkModeToggle");
 
                 darkModeToggle.addEventListener("change", function () {
                     const isDark = this.checked;
-
-                    const flowColor = isDark ? [255, 255, 255, 0.8] : [50, 50, 50, 0.8]; // White for dark mode, dark gray for light
+                    const flowColor = isDark ? [0, 255, 255] : [0, 160, 200];
 
                     flowlineLayers.forEach(item => {
                         item.layer.renderer = {
                             type: "simple",
                             symbol: {
                                 type: "simple-line",
-                                color: flowColor,
+                                color: [...flowColor, 0.9],
                                 width: 1
                             },
                             visualVariables: [{
@@ -463,14 +671,81 @@
                             }]
                         };
                         item.layer.refresh();
+
+                        // Immediately re-trigger animation if a country is currently selected
+                        if (item.layer.visible && lastSelectedCountry) {
+                            animateFlowLines(item.layer);
+                        }
                     });
 
                     map.basemap = isDark ? "dark-gray-vector" : "gray-vector";
                 });
 
 
+
                 addBasemapToggles();
                 addFlowlineToggles();
+
+                // 🔘 Info panel close button
+                const toggleInfoBtn = document.getElementById("toggleInfoBtn");
+                const reopenInfoBtn = document.getElementById("reopenInfoBtn");
+                const infoPanel = document.getElementById("infoPanel");
+
+                toggleInfoBtn.addEventListener("click", () => {
+                    infoPanel.style.display = "none";
+                    reopenInfoBtn.style.display = "block";
+                });
+
+                reopenInfoBtn.addEventListener("click", () => {
+                    infoPanel.style.display = "block";
+                    reopenInfoBtn.style.display = "none";
+                });
+
+                // ✅ Final fix: Detect popup close using internal "popup.visible" and clear lines
+                // view.popup.watch("visible", (visible) => {
+                //     if (!visible && lastSelectedCountry) {
+                //         console.log("Popup was closed. Clearing flowlines.");
+
+                //         lastSelectedCountry = null;
+
+                //         flowlineLayers.forEach((layerItem) => {
+                //             const layer = layerItem.layer;
+
+                //             // 🔁 Immediately clear data filter and reset rendering
+                //             layer.definitionExpression = "1=0";
+
+                //             const isDark = document.getElementById("darkModeToggle").checked;
+                //             const flowColor = isDark ? [0, 255, 255, 0] : [0, 160, 200, 0];
+
+                //             layer.renderer = {
+                //                 type: "simple",
+                //                 symbol: {
+                //                     type: "simple-line",
+                //                     color: flowColor,
+                //                     width: 0
+                //                 },
+                //                 visualVariables: [{
+                //                     type: "size",
+                //                     field: "Migrants",
+                //                     minDataValue: 1000,
+                //                     maxDataValue: 1000000,
+                //                     minSize: "0px",
+                //                     maxSize: "0px"
+                //                 }]
+                //             };
+
+                //             layer.refresh();
+                //         });
+                //     }
+                // });
+
+                legend = new Legend({
+                    view: view,
+                    container: "legendDiv",
+                    layerInfos: []  // ⛔ prevents ArcGIS from auto-including all visible layers
+                });
+
+
             });
 
 
@@ -479,6 +754,7 @@
 
 
         });
+
     </script>
 </body>
 

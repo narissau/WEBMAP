@@ -185,3 +185,17 @@ input:checked+.slider:before {
     box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
     font-weight: bold;
 }
+
+.legend-panel {
+    position: absolute;
+    bottom: 30px;
+    right: 20px;
+    z-index: 98;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 10px;
+    border-radius: 8px;
+    box-shadow: 0 0 8px rgba(0,0,0,0.2);
+    max-height: 300px;
+    overflow-y: auto;
+    font-family: Arial, sans-serif;
+}
