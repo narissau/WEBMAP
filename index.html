@@ -278,29 +278,52 @@
                 }
             });
 
-            
+            const flowlineKeyToCountryField = {
+                flowLines1990: {
+                    outbound: "Total19901995",
+                    inbound: "Inbound19901995"
+                },
+                flowLines1995: {
+                    outbound: "Total19952000",
+                    inbound: "Inbound19952000"
+                },
+                flowLines2000: {
+                    outbound: "Total20002005",
+                    inbound: "Inbound20002005"
+                },
+                flowLines2005: {
+                    outbound: "TotalMigrants",       // ← original outbound total
+                    inbound: "Inbound20052010"       // ← newly added
+                }
+            };
+
 
             const countryLayer = new FeatureLayer({
                 url: "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/13",
                 title: "Countries",
                 outFields: ["*"],
-                popupEnabled: true, // ✅ required for hitTest
+                popupEnabled: true,
                 visible: true,
                 popupTemplate: {
                     title: "{Origin}",
                     content: function (feature) {
                         const countryName = feature.graphic.attributes["Origin"] ?? "Unknown";
-                        const totalMigrants = Number(feature.graphic.attributes["TotalMigrants"]);
+
+                        const activeFlowKey = flowlineLayers.find(item => item.layer.visible)?.key;
+                        const directionType = migrationDirection === "inbound" ? "inbound" : "outbound";
+
+                        const totalField = flowlineKeyToCountryField[activeFlowKey]?.[directionType] || "TotalMigrants";
+                        const totalMigrants = Number(feature.graphic.attributes[totalField]);
 
                         if (migrationDirection === "inbound") {
-                            return `<i>No inbound migration totals available for <b>${countryName}</b>.</i><br>
-                    Try clicking on a flowline to explore arrivals.`;
+                            return `<b>${isNaN(totalMigrants) ? "No data" : totalMigrants.toLocaleString()}</b> Migrants arrived in <b>${countryName}</b>`;
                         } else {
-                            const count = isNaN(totalMigrants) ? "No data" : totalMigrants.toLocaleString();
-                            return `<b>${count}</b> Migrants originated from <b>${countryName}</b>`;
+                            return `<b>${isNaN(totalMigrants) ? "No data" : totalMigrants.toLocaleString()}</b> Migrants originated from <b>${countryName}</b>`;
                         }
                     }
                 }
+
+
 
             });
 

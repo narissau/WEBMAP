@@ -39,6 +39,16 @@
         <h3>Data Selection</h3>
         <h4>Basemaps</h4>
         <form id="basemapForm"></form>
+        <h4>Migration Direction</h4>
+        <div class="layer-item">
+            <input type="radio" id="outbound" name="direction" value="outbound" checked>
+            <label for="outbound">Outbound</label>
+        </div>
+        <div class="layer-item">
+            <input type="radio" id="inbound" name="direction" value="inbound">
+            <label for="inbound">Inbound</label>
+        </div>
+
         <h4>Migration Volumes (Flow Lines)</h4>
         <form id="flowlineForm"></form>
 
@@ -59,12 +69,31 @@
 
         let defaultFlowlineLayer = null;
 
+        let migrationDirection = "outbound";
 
         let lastSelectedCountry = null;
+
+        let highlightHandle = null;
+
 
         // Define globally (outside the click handler)
 
     // Enhanced global animation function with distinct color for visual hierarchy
+
+        function updateFlowlinesForCountry(selectedCountry, sliderValue) {
+                const minMigrants = sliderValueToMigrants(sliderValue);
+
+
+                flowlineLayers.forEach(layerItem => {
+                    if (layerItem.layer.visible) {
+                        const field = migrationDirection === "inbound" ? "Destination" : "Origin";
+                        layerItem.layer.definitionExpression = `${field} = '${selectedCountry}' AND Migrants >= ${minMigrants}`;
+                        layerItem.layer.refresh();
+                        animateFlowLines(layerItem.layer);
+                    }
+                });
+            }
+
         function animateFlowLines(layer) {
             const animationDuration = 2000;  // 2 seconds
             const frameRate = 60;
@@ -192,19 +221,25 @@
                     url: url,
                     title: title,
                     outFields: ["*"],
-                    popupTemplate: popupTemplate,
                     visible: false
                 };
+
+                if (popupTemplate) {
+                    layerConfig.popupTemplate = popupTemplate;
+                } else if (useFlowRenderer) {
+                    // Minimal dummy template so hitTest works
+                    layerConfig.popupTemplate = {
+                        title: "Migration Flow",
+                        content: " " // Required for hitTest to register
+                    };
+                }
 
                 if (useFlowRenderer) {
                     layerConfig.orderBy = [{
                         field: "Migrants",
                         order: "desc"
                     }];
-                }
 
-
-                if (useFlowRenderer) { // flow line thickness dependent on migrant count
                     layerConfig.renderer = {
                         type: "simple",
                         symbol: {
@@ -236,24 +271,62 @@
                 map: map,
                 center: [0, 20],
                 zoom: 2,
+                popupEnabled: true,
                 constraints: {
                     minZoom: 1,
                     maxZoom: 5
                 }
             });
 
-            
+            const flowlineKeyToCountryField = {
+                flowLines1990: {
+                    outbound: "Total19901995",
+                    inbound: "Inbound19901995"
+                },
+                flowLines1995: {
+                    outbound: "Total19952000",
+                    inbound: "Inbound19952000"
+                },
+                flowLines2000: {
+                    outbound: "Total20002005",
+                    inbound: "Inbound20002005"
+                },
+                flowLines2005: {
+                    outbound: "TotalMigrants",       // ← original outbound total
+                    inbound: "Inbound20052010"       // ← newly added
+                }
+            };
+
 
             const countryLayer = new FeatureLayer({
                 url: "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/13",
                 title: "Countries",
                 outFields: ["*"],
+                popupEnabled: true,
+                visible: true,
                 popupTemplate: {
                     title: "{Origin}",
-                    content: "<b> {TotalMigrants}</b> Migrants Originated from <b>{Origin}</b></p>"
-                },
-                listMode: "hide"
+                    content: function (feature) {
+                        const countryName = feature.graphic.attributes["Origin"] ?? "Unknown";
+
+                        const activeFlowKey = flowlineLayers.find(item => item.layer.visible)?.key;
+                        const directionType = migrationDirection === "inbound" ? "inbound" : "outbound";
+
+                        const totalField = flowlineKeyToCountryField[activeFlowKey]?.[directionType] || "TotalMigrants";
+                        const totalMigrants = Number(feature.graphic.attributes[totalField]);
+
+                        if (migrationDirection === "inbound") {
+                            return `<b>${isNaN(totalMigrants) ? "No data" : totalMigrants.toLocaleString()}</b> Migrants arrived in <b>${countryName}</b>`;
+                        } else {
+                            return `<b>${isNaN(totalMigrants) ? "No data" : totalMigrants.toLocaleString()}</b> Migrants originated from <b>${countryName}</b>`;
+                        }
+                    }
+                }
+
+
+
             });
+
 
             map.add(countryLayer);
 
@@ -299,10 +372,11 @@
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/44",
                         "1990-1995",
-                        {
-                            title: "Migration Flow (1990-1995)",
-                            content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
-                        },
+                        null,
+                        // {
+                        //     title: "Migration Flow (1990-1995)",
+                        //     content: "<p>Origin:<b>{Origin}</p></b><p>Destination: <b>{Destination}</b></p><p>Total Migrants: <b>{Migrants}</b></p>"
+                        // },
                         true
                     )
                 },
@@ -311,10 +385,11 @@
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/45",
                         "1995-2000",
-                        {
-                            title: "Migration Flow (1995-2000)",
-                            content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
-                        },
+                        null,
+                        // {
+                        //     title: "Migration Flow (1995-2000)",
+                        //     content: "<p>Origin:<b>{Origin}</p></b><p>Destination: <b>{Destination}</b></p><p>Total Migrants: <b>{Migrants}</b></p>"
+                        // },
                         true
                     )
                 },
@@ -323,10 +398,11 @@
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/54",
                         "2000-2005",
-                        {
-                            title: "Migration Flow (2000-2005)",
-                            content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
-                        },
+                        null,
+                        // {
+                        //     title: "Migration Flow (2000-2005)",
+                        //     content: "<p>Origin:<b>{Origin}</p></b><p>Destination: <b>{Destination}</b></p><p>Total Migrants: <b>{Migrants}</b></p>"
+                        // },
                         true
                     )
                 },
@@ -335,10 +411,11 @@
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/46",
                         "2005-2010",
-                        {
-                            title: "Migration Flow (2005-2010)",
-                            content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
-                        },
+                        null,
+                        // {
+                        //     title: "Migration Flow (2005-2010)",
+                        //     content: "<p>Origin:<b>{Origin}</p></b><p>Destination: <b>{Destination}</b></p><p>Total Migrants: <b>{Migrants}</b></p>"
+                        // },
                         true
                     ),
                     default: true
@@ -378,15 +455,19 @@
                 flowlineLayers.forEach(layerItem => {
                     if (layerItem.layer.visible) {
                         if (lastSelectedCountry) {
-                            layerItem.layer.definitionExpression = `Origin = '${lastSelectedCountry}' AND Migrants >= ${minMigrants}`;
+                            const directionField = migrationDirection === "inbound" ? "Destination" : "Origin";
+                            layerItem.layer.definitionExpression = `${directionField} = '${lastSelectedCountry}' AND Migrants >= ${minMigrants}`;
                         } else {
                             layerItem.layer.definitionExpression = "1=0";
                         }
+
                         layerItem.layer.refresh();
                         animateFlowLines(layerItem.layer);
                     }
                 });
             });
+
+
 
 
 
@@ -513,7 +594,7 @@
                             layerItem.layer.refresh();
                         });
 
-                        // ✅ Update the legend to only show the selected flowline layer
+                        // Update the legend to only show the selected flowline layer
                         if (legend) {
                             legend.layerInfos = [{
                                 layer: item.layer,
@@ -521,6 +602,7 @@
                             }];
                         }
                     });
+
 
 
 
@@ -552,47 +634,62 @@
             view.on("click", function (event) {
                 view.hitTest(event).then(function (response) {
 
-                    // Check if a flowline was clicked
+                    // FLOWLINE HANDLER
                     const visibleFlowLayer = flowlineLayers.find(item => item.layer.visible)?.layer;
-
                     const flowlineFeature = response.results.find(res =>
                         res.graphic && res.graphic.layer === visibleFlowLayer
                     );
 
                     if (flowlineFeature) {
                         console.log("Clicked on a flowline. Showing flowline popup.");
-
                         const graphic = flowlineFeature.graphic;
-                        graphic.popupTemplate = graphic.layer.popupTemplate;
 
                         view.popup.close();
                         setTimeout(() => {
+                            const originAttr = graphic.attributes["Origin"];
+                            const destAttr = graphic.attributes["Destination"];
+                            const totalMigrants = graphic.attributes["Migrants"];
+
+                            const directionText = `
+                                <p><b>Total Migrants:</b> ${Number(totalMigrants).toLocaleString()}</p>
+                                <p><b>Origin:</b> ${originAttr}</p>
+                                <p><b>Destination:</b> ${destAttr}</p>
+                            `;
+
                             view.popup.open({
-                                features: [graphic],
+                                title: "Migration Flow",
+                                content: directionText,
                                 location: event.mapPoint
+                            });
+
+                            if (highlightHandle) {
+                                highlightHandle.remove();
+                                highlightHandle = null;
+                            }
+
+                            view.whenLayerView(graphic.layer).then(layerView => {
+                                highlightHandle = layerView.highlight(graphic);
                             });
                         }, 50);
 
-                        return;
+                        return; // ✅ keep this return for early exit if flowline clicked
                     }
 
-                    // Check if a country was clicked
+                    // COUNTRY CLICK LOGIC CONTINUES HERE...
                     const countryFeature = response.results.find(res =>
-                        res.graphic && res.graphic.layer && res.graphic.layer.title === "Countries"
+                        res.graphic && res.graphic.layer === countryLayer
                     );
 
                     if (countryFeature) {
-                        let selectedCountry = countryFeature.graphic.attributes["Origin"];
-                        console.log(`Clicked on country: ${selectedCountry}`);
+                        const selectedCountry = countryFeature.graphic.attributes["Origin"];
+                        console.log(`✅ Country clicked: ${selectedCountry}`);
 
                         if (selectedCountry) {
                             lastSelectedCountry = selectedCountry;
+
                             const minMigrants = sliderValueToMigrants(migrantSlider.value);
 
-
                             let activeFlowLayer = flowlineLayers.find(item => item.layer.visible)?.layer;
-
-                            // Fallback: activate the default flowline layer
                             if (!activeFlowLayer && defaultFlowlineLayer) {
                                 activeFlowLayer = defaultFlowlineLayer;
                                 defaultFlowlineLayer.visible = true;
@@ -600,16 +697,11 @@
                             }
 
                             if (activeFlowLayer) {
-                                activeFlowLayer.definitionExpression = `Origin = '${selectedCountry}' AND Migrants >= ${minMigrants}`;
+                                const directionField = migrationDirection === "inbound" ? "Destination" : "Origin";
+                                activeFlowLayer.definitionExpression = `${directionField} = '${selectedCountry}' AND Migrants >= ${minMigrants}`;
                                 activeFlowLayer.refresh();
                                 animateFlowLines(activeFlowLayer);
                             }
-
-
-                            view.popup.open({
-                                features: [countryFeature.graphic],
-                                location: event.mapPoint
-                            });
                         }
                     } else {
                         console.log("Clicked on empty space. Clearing flow lines.");
@@ -621,14 +713,53 @@
                             }
                         });
 
-
                         view.popup.close();
+                        if (highlightHandle) {
+                            highlightHandle.remove();
+                            highlightHandle = null;
+                        }
                     }
-                });
-            });
+                }); // ✅ this closes .then()
+            });     // ✅ this closes view.on("click")
+
 
 
             view.when(() => { // view.when waits for the map view to finish loading
+
+                const directionRadios = document.querySelectorAll("input[name='direction']");
+                directionRadios.forEach(radio => {
+                    radio.addEventListener("change", (e) => {
+                        migrationDirection = e.target.value;
+
+                        if (lastSelectedCountry) {
+                            updateFlowlinesForCountry(lastSelectedCountry, this.value);
+                        }
+                        const activeGraphic = view.popup.selectedFeature;
+                        if (activeGraphic) {
+                            // Re-trigger the popup with updated direction info
+                            const eventPoint = view.popup.location;
+                            const originAttr = graphic.attributes["Origin"];
+                            const destAttr = graphic.attributes["Destination"];
+                            const totalMigrants = graphic.attributes["Migrants"];
+
+                            const directionText = `
+                                <p><b>Total Migrants:</b> ${Number(totalMigrants).toLocaleString()}</p>
+                                <p><b>Origin:</b> ${originAttr}</p>
+                                <p><b>Destination:</b> ${destAttr}</p>
+                            `;
+
+
+                            view.popup.open({
+                                title: "Migration Flow",
+                                content: directionText,
+                                location: event.mapPoint
+                            });
+
+                        }
+
+                    });
+                });
+
 
                 const toggleContainer = document.createElement("div");
                 toggleContainer.innerHTML = `
@@ -728,11 +859,6 @@
 
 
             });
-
-
-            view.popup.autoOpenEnabled = true;
-
-
 
         });
 
