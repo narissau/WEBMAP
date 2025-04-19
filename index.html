@@ -80,8 +80,9 @@
 
     // Enhanced global animation function with distinct color for visual hierarchy
 
-        function updateFlowlinesForCountry(selectedCountry) {
-                const minMigrants = sliderValueToMigrants(document.getElementById("migrantSlider").value);
+        function updateFlowlinesForCountry(selectedCountry, sliderValue) {
+                const minMigrants = sliderValueToMigrants(sliderValue);
+
 
                 flowlineLayers.forEach(layerItem => {
                     if (layerItem.layer.visible) {
@@ -220,19 +221,25 @@
                     url: url,
                     title: title,
                     outFields: ["*"],
-                    popupTemplate: popupTemplate,
                     visible: false
                 };
+
+                if (popupTemplate) {
+                    layerConfig.popupTemplate = popupTemplate;
+                } else if (useFlowRenderer) {
+                    // Minimal dummy template so hitTest works
+                    layerConfig.popupTemplate = {
+                        title: "Migration Flow",
+                        content: " " // Required for hitTest to register
+                    };
+                }
 
                 if (useFlowRenderer) {
                     layerConfig.orderBy = [{
                         field: "Migrants",
                         order: "desc"
                     }];
-                }
 
-
-                if (useFlowRenderer) { // flow line thickness dependent on migrant count
                     layerConfig.renderer = {
                         type: "simple",
                         symbol: {
@@ -342,10 +349,11 @@
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/44",
                         "1990-1995",
-                        {
-                            title: "Migration Flow (1990-1995)",
-                            content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
-                        },
+                        null,
+                        // {
+                        //     title: "Migration Flow (1990-1995)",
+                        //     content: "<p>Origin:<b>{Origin}</p></b><p>Destination: <b>{Destination}</b></p><p>Total Migrants: <b>{Migrants}</b></p>"
+                        // },
                         true
                     )
                 },
@@ -354,10 +362,11 @@
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/45",
                         "1995-2000",
-                        {
-                            title: "Migration Flow (1995-2000)",
-                            content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
-                        },
+                        null,
+                        // {
+                        //     title: "Migration Flow (1995-2000)",
+                        //     content: "<p>Origin:<b>{Origin}</p></b><p>Destination: <b>{Destination}</b></p><p>Total Migrants: <b>{Migrants}</b></p>"
+                        // },
                         true
                     )
                 },
@@ -366,10 +375,11 @@
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/54",
                         "2000-2005",
-                        {
-                            title: "Migration Flow (2000-2005)",
-                            content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
-                        },
+                        null,
+                        // {
+                        //     title: "Migration Flow (2000-2005)",
+                        //     content: "<p>Origin:<b>{Origin}</p></b><p>Destination: <b>{Destination}</b></p><p>Total Migrants: <b>{Migrants}</b></p>"
+                        // },
                         true
                     )
                 },
@@ -378,10 +388,11 @@
                     layer: createFeatureLayer(
                         "https://services.arcgis.com/FvF9MZKp3JWPrSkg/arcgis/rest/services/GEOG_521_Migration_Data/FeatureServer/46",
                         "2005-2010",
-                        {
-                            title: "Migration Flow (2005-2010)",
-                            content: "<p><b>Origin:</b> {Origin}</p><p><b>Destination:</b> {Destination}</p><p><b>Total Migrants:</b> {Migrants}</p>"
-                        },
+                        null,
+                        // {
+                        //     title: "Migration Flow (2005-2010)",
+                        //     content: "<p>Origin:<b>{Origin}</p></b><p>Destination: <b>{Destination}</b></p><p>Total Migrants: <b>{Migrants}</b></p>"
+                        // },
                         true
                     ),
                     default: true
@@ -421,15 +432,19 @@
                 flowlineLayers.forEach(layerItem => {
                     if (layerItem.layer.visible) {
                         if (lastSelectedCountry) {
-                            updateFlowlinesForCountry(lastSelectedCountry);
+                            const directionField = migrationDirection === "inbound" ? "Destination" : "Origin";
+                            layerItem.layer.definitionExpression = `${directionField} = '${lastSelectedCountry}' AND Migrants >= ${minMigrants}`;
                         } else {
                             layerItem.layer.definitionExpression = "1=0";
                         }
+
                         layerItem.layer.refresh();
                         animateFlowLines(layerItem.layer);
                     }
                 });
             });
+
+
 
 
 
@@ -596,18 +611,15 @@
             view.on("click", function (event) {
                 view.hitTest(event).then(function (response) {
 
-                    // Check if a flowline was clicked
+                    // FLOWLINE HANDLER
                     const visibleFlowLayer = flowlineLayers.find(item => item.layer.visible)?.layer;
-
                     const flowlineFeature = response.results.find(res =>
                         res.graphic && res.graphic.layer === visibleFlowLayer
                     );
 
                     if (flowlineFeature) {
                         console.log("Clicked on a flowline. Showing flowline popup.");
-
                         const graphic = flowlineFeature.graphic;
-                        graphic.popupTemplate = graphic.layer.popupTemplate;
 
                         view.popup.close();
                         setTimeout(() => {
@@ -615,19 +627,14 @@
                             const destAttr = graphic.attributes["Destination"];
                             const totalMigrants = graphic.attributes["Migrants"];
 
-                            const origin = migrationDirection === "inbound" ? originAttr : originAttr;
-                            const destination = migrationDirection === "inbound" ? destAttr : destAttr;
-
-                            const subjectCountry = migrationDirection === "inbound" ? destAttr : originAttr;
-                            const counterpart = migrationDirection === "inbound" ? originAttr : destAttr;
-
-                            const directionText = migrationDirection === "inbound"
-                                ? `<b>${totalMigrants}</b> migrants arrived in <b>${subjectCountry}</b> from <b>${counterpart}</b>`
-                                : `<b>${totalMigrants}</b> migrants departed <b>${subjectCountry}</b> for <b>${counterpart}</b>`;
-
+                            const directionText = `
+                                <p><b>Total Migrants:</b> ${Number(totalMigrants).toLocaleString()}</p>
+                                <p><b>Origin:</b> ${originAttr}</p>
+                                <p><b>Destination:</b> ${destAttr}</p>
+                            `;
 
                             view.popup.open({
-                                title: `${subjectCountry} ↔ ${counterpart}`,
+                                title: "Migration Flow",
                                 content: directionText,
                                 location: event.mapPoint
                             });
@@ -640,13 +647,12 @@
                             view.whenLayerView(graphic.layer).then(layerView => {
                                 highlightHandle = layerView.highlight(graphic);
                             });
-
                         }, 50);
 
-                        return;
+                        return; // ✅ keep this return for early exit if flowline clicked
                     }
 
-                    // Check if a country was clicked
+                    // COUNTRY CLICK LOGIC CONTINUES HERE...
                     const countryFeature = response.results.find(res =>
                         res.graphic && res.graphic.layer === countryLayer
                     );
@@ -673,11 +679,8 @@
                                 activeFlowLayer.refresh();
                                 animateFlowLines(activeFlowLayer);
                             }
-
                         }
-                    }
-
-                    else {
+                    } else {
                         console.log("Clicked on empty space. Clearing flow lines.");
                         lastSelectedCountry = null;
 
@@ -687,16 +690,15 @@
                             }
                         });
 
-
                         view.popup.close();
                         if (highlightHandle) {
                             highlightHandle.remove();
                             highlightHandle = null;
                         }
-
                     }
-                });
-            });
+                }); // ✅ this closes .then()
+            });     // ✅ this closes view.on("click")
+
 
 
             view.when(() => { // view.when waits for the map view to finish loading
@@ -707,25 +709,29 @@
                         migrationDirection = e.target.value;
 
                         if (lastSelectedCountry) {
-                            updateFlowlinesForCountry(lastSelectedCountry);
+                            updateFlowlinesForCountry(lastSelectedCountry, this.value);
                         }
                         const activeGraphic = view.popup.selectedFeature;
                         if (activeGraphic) {
                             // Re-trigger the popup with updated direction info
                             const eventPoint = view.popup.location;
-                            const origin = activeGraphic.attributes["Origin"];
-                            const destination = activeGraphic.attributes["Destination"];
-                            const totalMigrants = activeGraphic.attributes["Migrants"];
+                            const originAttr = graphic.attributes["Origin"];
+                            const destAttr = graphic.attributes["Destination"];
+                            const totalMigrants = graphic.attributes["Migrants"];
 
-                            const directionText = migrationDirection === "inbound"
-                                ? `<b>${totalMigrants}</b> migrants arrived in <b>${destination}</b> from <b>${origin}</b>`
-                                : `<b>${totalMigrants}</b> migrants departed <b>${origin}</b> for <b>${destination}</b>`;
+                            const directionText = `
+                                <p><b>Total Migrants:</b> ${Number(totalMigrants).toLocaleString()}</p>
+                                <p><b>Origin:</b> ${originAttr}</p>
+                                <p><b>Destination:</b> ${destAttr}</p>
+                            `;
+
 
                             view.popup.open({
-                                title: `${origin} ↔ ${destination}`,
+                                title: "Migration Flow",
                                 content: directionText,
-                                location: eventPoint
+                                location: event.mapPoint
                             });
+
                         }
 
                     });
