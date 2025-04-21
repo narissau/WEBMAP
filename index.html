@@ -582,6 +582,34 @@
                     item.layer.visible = item.default || false;
 
                     radio.addEventListener("change", () => {
+                        // Reset if a country was selected
+                        if (lastSelectedCountry) {
+                            lastSelectedCountry = null;
+
+                            // Reset slider
+                            migrantSlider.value = 0;
+                            document.getElementById("sliderValue").innerText = "0";
+
+                            // Hide all flowlines
+                            flowlineLayers.forEach(layerItem => {
+                                if (layerItem.layer.visible) {
+                                    fadeOutFlowLines(layerItem.layer);
+                                } else {
+                                    layerItem.layer.definitionExpression = "1=0";
+                                    layerItem.layer.refresh();
+                                }
+                            });
+
+
+                            // Close popup & clear highlights
+                            view.popup.close();
+                            if (highlightHandle) {
+                                highlightHandle.remove();
+                                highlightHandle = null;
+                            }
+                        }
+
+                        // Continue with standard flowline dataset switching
                         const minMigrants = sliderValueToMigrants(migrantSlider.value);
 
                         flowlineLayers.forEach(layerItem => {
@@ -590,19 +618,13 @@
                             layerItem.layer.visible = isActive;
 
                             if (isActive) {
-                                layerItem.layer.definitionExpression = lastSelectedCountry
-                                    ? `Origin = '${lastSelectedCountry}' AND Migrants >= ${minMigrants}`
-                                    : "1=0";
-
-                                animateFlowLines(layerItem.layer);
+                                layerItem.layer.definitionExpression = "1=0"; // start empty
+                                layerItem.layer.refresh();
                             } else if (layerItem.layer.visible) {
                                 fadeOutFlowLines(layerItem.layer);
                             }
-
-                            layerItem.layer.refresh();
                         });
 
-                        // Update the legend to only show the selected flowline layer
                         if (legend) {
                             legend.layerInfos = [{
                                 layer: item.layer,
@@ -610,6 +632,7 @@
                             }];
                         }
                     });
+
 
 
 
@@ -738,37 +761,54 @@
 
                 const directionRadios = document.querySelectorAll("input[name='direction']");
                 directionRadios.forEach(radio => {
-                    radio.addEventListener("change", (e) => {
-                        migrationDirection = e.target.value;
+                    radio.addEventListener("change", () => {
+                        migrationDirection = radio.value;
 
+                        // ✅ Reset if a country is selected
                         if (lastSelectedCountry) {
-                            updateFlowlinesForCountry(lastSelectedCountry, this.value);
-                        }
-                        const activeGraphic = view.popup.selectedFeature;
-                        if (activeGraphic) {
-                            // Re-trigger the popup with updated direction info
-                            const eventPoint = view.popup.location;
-                            const originAttr = graphic.attributes["Origin"];
-                            const destAttr = graphic.attributes["Destination"];
-                            const totalMigrants = graphic.attributes["Migrants"];
+                            lastSelectedCountry = null;
 
-                            const directionText = `
-                                <p><b>Total Migrants:</b> ${Number(totalMigrants).toLocaleString()}</p>
-                                <p><b>Origin:</b> ${originAttr}</p>
-                                <p><b>Destination:</b> ${destAttr}</p>
-                            `;
+                            // Reset slider
+                            migrantSlider.value = 0;
+                            document.getElementById("sliderValue").innerText = "0";
 
-
-                            view.popup.open({
-                                title: "Migration Flow",
-                                content: directionText,
-                                location: event.mapPoint
+                            // Hide all flowlines
+                            flowlineLayers.forEach(layerItem => {
+                                if (layerItem.layer.visible) {
+                                    fadeOutFlowLines(layerItem.layer);
+                                } else {
+                                    layerItem.layer.definitionExpression = "1=0";
+                                    layerItem.layer.refresh();
+                                }
                             });
 
+
+                            // Close popup & clear highlight
+                            view.popup.close();
+                            if (highlightHandle) {
+                                highlightHandle.remove();
+                                highlightHandle = null;
+                            }
                         }
 
+                        // ✅ Update popup if user had clicked a flowline
+                        if (view.popup.selectedFeature?.attributes) {
+                            const attr = view.popup.selectedFeature.attributes;
+                            const totalMigrants = attr["Migrants"];
+                            const origin = attr["Origin"];
+                            const destination = attr["Destination"];
+
+                            const content = `
+                                <p><b>Total Migrants:</b> ${Number(totalMigrants).toLocaleString()}</p>
+                                <p><b>Origin:</b> ${origin}</p>
+                                <p><b>Destination:</b> ${destination}</p>
+                            `;
+
+                            view.popup.content = content;
+                        }
                     });
                 });
+
 
 
                 const toggleContainer = document.createElement("div");
