@@ -15,7 +15,7 @@ body {
 /* Sidebar styles */
 #layerControls {
     position: absolute;
-    bottom: 10px;
+    bottom: 30px;
     left: 10px;
     background: rgba(0, 0, 0, 0.8);
     /* Dark semi-transparent background */
@@ -202,4 +202,11 @@ input:checked+.slider:before {
     max-height: 300px;
     overflow-y: auto;
     font-family: "Lato", sans-serif;
+}
+
+@media (max-height: 850px) {
+    #layerControls {
+        max-height: 65vh;
+        /* shrink panel to 70% of viewport height */
+    }
 }

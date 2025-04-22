@@ -90,12 +90,12 @@
     // Enhanced global animation function with distinct color for visual hierarchy
 
         function updateFlowlinesForCountry(selectedCountry, sliderValue) {
-                const minMigrants = sliderValueToMigrants(sliderValue);
+                const minMigrants = sliderValueToMigrants(sliderValue); // const- value won't change inside function
 
 
                 flowlineLayers.forEach(layerItem => {
                     if (layerItem.layer.visible) {
-                        const field = migrationDirection === "inbound" ? "Destination" : "Origin";
+                        const field = migrationDirection === "inbound" ? "Destination" : "Origin"; 
                         layerItem.layer.definitionExpression = `${field} = '${selectedCountry}' AND Migrants >= ${minMigrants}`;
                         layerItem.layer.refresh();
                         animateFlowLines(layerItem.layer);
@@ -114,8 +114,8 @@
 
             function animateStep() {
                 currentFrame++;
-                const progress = currentFrame / totalFrames;
-                const easedProgress = 1 - Math.pow(1 - progress, 3);
+                const progress = currentFrame / totalFrames; // holds the % of the animation completed
+                const easedProgress = 1 - Math.pow(1 - progress, 3); // starts fast, slows down near the end
 
                 layer.renderer = {
                     type: "simple",
@@ -124,7 +124,7 @@
                         color: [...lineColor, easedProgress * 0.9],  // Animated opacity
                         width: easedProgress * 10
                     },
-                    visualVariables: [{
+                    visualVariables: [{ // dynamically change visual style based on data value
                         type: "size",
                         field: "Migrants",
                         minDataValue: 1000,
@@ -134,10 +134,10 @@
                     }]
                 };
 
-                layer.refresh();
+                layer.refresh(); // apply animation frame that was just calculated
 
                 if (currentFrame < totalFrames) {
-                    requestAnimationFrame(animateStep);
+                    requestAnimationFrame(animateStep); // built-in method
                 }
             }
 
@@ -187,7 +187,7 @@
                     requestAnimationFrame(animateStep);
                 } else {
                     // Explicitly reset to fully hidden
-                    layer.definitionExpression = "1=0";
+                    layer.definitionExpression = "1=0"; // arcgis maps SDK proprty
 
                     // Reset renderer to clearly defined initial state
                     layer.renderer = {
@@ -213,9 +213,9 @@
             animateStep();
         }
 
-        require([
+        require([ // modules only loaded that are needed
             "esri/config",
-            "esri/Map",
+            "esri/Map", // loads tools needed (e.g., to create a map)
             "esri/views/MapView",
             "esri/layers/FeatureLayer",
             "esri/renderers/SimpleRenderer",
@@ -229,7 +229,7 @@
                 let layerConfig = {
                     url: url,
                     title: title,
-                    outFields: ["*"],
+                    outFields: ["*"], 
                     visible: false
                 };
 
@@ -271,7 +271,7 @@
             }
 
 
-            const map = new Map({
+            const map = new Map({ // Map = class
                 basemap: "gray-vector"
             });
 
@@ -287,7 +287,8 @@
                 }
             });
 
-            const flowlineKeyToCountryField = {
+            const flowlineKeyToCountryField = { 
+            // building a lookup table to connect the selected flowline layer to the correct attribute field
                 flowLines1990: {
                     outbound: "Total19901995",
                     inbound: "Inbound19901995"
@@ -312,7 +313,7 @@
                 title: "Countries",
                 outFields: ["*"],
                 popupEnabled: true,
-                visible: true,
+                visible: true, // shows when the map loads
                 popupTemplate: {
                     title: "{Origin}",
                     content: function (feature) {
