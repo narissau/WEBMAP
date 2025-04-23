@@ -12,6 +12,17 @@ body {
     font-family: "Lato";
 }
 
+.tip-list {
+    padding-left: 18px;
+    margin-top: 10px;
+}
+
+.tip-list li {
+    font-size: 14px;
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+
 /* Sidebar styles */
 #layerControls {
     position: absolute;

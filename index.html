@@ -35,10 +35,13 @@
                     Select a country to see where its people moved during the selected period.
                     Use the filters and basemap layers below to explore trends, volumes, and net changes in migration.
                 </p>
-                <p><b>Tip:</b> Click on a country to highlight its migration flow lines.</p>
-                <p><b>Tip:</b> Use the slider to filter by minimum migrant counts, and switch basemaps to view changes in
-                    immigration, emigration, and net migration.
-                </p>
+                <p><b>Tips:</b></p>
+                <ul class="tip-list">
+                    <li>Click on a country to highlight its migration flow lines.</li>
+                    <li>Use the slider to filter by minimum migrant counts.</li>
+                    <li>Switch basemaps to view changes in immigration, emigration, and net migration.</li>
+                </ul>
+
                 <button class="info-close-btn"
                     onclick="document.getElementById('infoPanel').style.display='none'; document.getElementById('reopenInfoBtn').style.display='block';">
                     Got it
@@ -491,8 +494,6 @@
             });
 
 
-
-
             function addBasemapToggles() {
                 const form = document.getElementById("basemapForm");
 
@@ -562,6 +563,7 @@
                 map.add(item.layer);
             });
 
+
             // Format Net Migration legend to 1 decimal place
             const netMigrationLayer = basemapLayers.find(b => b.key === "netMigration")?.layer; // ?. avoids error if .layer is undefined
             if (netMigrationLayer) {
@@ -579,7 +581,6 @@
                     }
                 });
             }
-
 
 
             // Function to add flowline toggles
