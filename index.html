@@ -332,14 +332,18 @@
                         const directionType = migrationDirection === "inbound" ? "inbound" : "outbound";
 
                         const totalField = flowlineKeyToCountryField[activeFlowKey]?.[directionType] || "TotalMigrants";
+                        const timeRange = flowlineKeyToTimeRange[activeFlowKey] || "the selected period";
+
                         const totalMigrants = Number(feature.graphic.attributes[totalField]);
+                        const count = isNaN(totalMigrants) ? "No data" : totalMigrants.toLocaleString();
 
                         if (migrationDirection === "inbound") {
-                            return `<b>${isNaN(totalMigrants) ? "No data" : totalMigrants.toLocaleString()}</b> Migrants arrived in <b>${countryName}</b>`;
+                            return `<b>${count}</b> migrants arrived in <b>${countryName}</b> from <b>${timeRange}</b>.`;
                         } else {
-                            return `<b>${isNaN(totalMigrants) ? "No data" : totalMigrants.toLocaleString()}</b> Migrants originated from <b>${countryName}</b>`;
+                            return `<b>${count}</b> migrants departed from <b>${countryName}</b> between <b>${timeRange}</b>.`;
                         }
                     }
+
                 }
 
 
@@ -760,6 +764,13 @@
                 }); // closes .then()
             });     // closes view.on("click")
 
+
+            const flowlineKeyToTimeRange = {
+                flowLines1990: "1990 and 1995",
+                flowLines1995: "1995 and 2000",
+                flowLines2000: "2000 and 2005",
+                flowLines2005: "2005 and 2010"
+            };
 
 
             view.when(() => { // view.when waits for the map view to finish loading
