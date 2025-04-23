@@ -18,24 +18,37 @@
 
 <body>
     <div id="viewDiv"></div>
-
+    <div id="overlay"></div>
     <div id="infoPanel" class="info-panel">
         <div class="info-header">
             <span>ℹ️ Info</span>
             <button id="toggleInfoBtn">✕</button>
         </div>
-        <div class="info-body">
-            <h2>Global Migration Explorer</h2>
-            <p>
-                This interactive map visualizes international migration patterns from 1990 to 2020.
-                Select a country to see where its people moved during the selected period.
-                Use the filters and basemap layers below to explore trends, volumes, and net changes in migration.
-            </p>
-            <p><b>Tip:</b> Use the slider to filter by minimum migrant counts, and switch basemaps to view changes in
-                immigration, emigration, and net migration.</p>
+        <div id="infoPanel" class="info-panel">
+            <div class="info-header">
+                <span>ℹ️ Info</span>
+            </div>
+            <div class="info-body">
+                <h2>Global Migration Explorer</h2>
+                <p>
+                    This interactive map visualizes international migration patterns from 1990 to 2020.
+                    Select a country to see where its people moved during the selected period.
+                    Use the filters and basemap layers below to explore trends, volumes, and net changes in migration.
+                </p>
+                <p><b>Tip:</b> Click on a country to highlight its migration flow lines.</p>
+                <p><b>Tip:</b> Use the slider to filter by minimum migrant counts, and switch basemaps to view changes in
+                    immigration, emigration, and net migration.
+                </p>
+                <button class="info-close-btn"
+                    onclick="document.getElementById('infoPanel').style.display='none'; document.getElementById('reopenInfoBtn').style.display='block';">
+                    Got it
+                </button>
+            </div>
         </div>
+
+
     </div>
-    <!-- 🔘 Reopen Info Panel Button -->
+    <!-- Reopen Info Panel Button -->
     <button id="reopenInfoBtn" class="reopen-btn" style="display: none;">?</button>
 
 
@@ -84,10 +97,6 @@
 
         let highlightHandle = null;
 
-
-        // Define globally (outside the click handler)
-
-    // Enhanced global animation function with distinct color for visual hierarchy
 
         function updateFlowlinesForCountry(selectedCountry, sliderValue) {
                 const minMigrants = sliderValueToMigrants(sliderValue); // const- value won't change inside function
@@ -454,7 +463,7 @@
 
             // Update displayed slider value
             migrantSlider.addEventListener("input", function () {
-                const migrants = sliderValueToMigrants(this.value);
+                const migrants = sliderValueToMigrants(this.value); // current numeric value of slider
                 sliderValueDisplay.textContent = formatMigrantValue(migrants);
             });
 
@@ -468,7 +477,7 @@
                             const directionField = migrationDirection === "inbound" ? "Destination" : "Origin";
                             layerItem.layer.definitionExpression = `${directionField} = '${lastSelectedCountry}' AND Migrants >= ${minMigrants}`;
                         } else {
-                            layerItem.layer.definitionExpression = "1=0";
+                            layerItem.layer.definitionExpression = "1=0"; // 1=0 is always false
                         }
 
                         layerItem.layer.refresh();
@@ -486,8 +495,8 @@
                 // "None" radio button to clear all basemap layers
                 const noneRadio = document.createElement("input");
                 noneRadio.type = "radio";
-                noneRadio.name = "basemapGroup";
-                noneRadio.id = "noneBasemap";
+                noneRadio.name = "basemapGroup"; // only one can be checked at a time
+                noneRadio.id = "noneBasemap"; // none is the default
                 noneRadio.checked = true;
                 noneRadio.addEventListener("change", () => {
                     basemapLayers.forEach(layerItem => {
@@ -496,6 +505,7 @@
                     });
                 });
 
+                // assembling html structure and adding it to the page
                 const noneLabel = document.createElement("label");
                 noneLabel.htmlFor = "noneBasemap";
                 noneLabel.innerText = "None";
@@ -516,7 +526,7 @@
 
                     radio.addEventListener("change", () => {
                         basemapLayers.forEach(layerItem => {
-                            const isActive = layerItem.key === item.key;
+                            const isActive = layerItem.key === item.key; /// === strict equality check. values and types exact match
                             layerItem.layer.visible = isActive;
                             layerItem.layer.refresh();
                         });
@@ -543,15 +553,13 @@
                 });
             }
 
-
-
             basemapLayers.forEach(item => {
                 item.layer.visible = false; // Start hidden
                 map.add(item.layer);
             });
 
             // Format Net Migration legend to 1 decimal place
-            const netMigrationLayer = basemapLayers.find(b => b.key === "netMigration")?.layer;
+            const netMigrationLayer = basemapLayers.find(b => b.key === "netMigration")?.layer; // ?. avoids error if .layer is undefined
             if (netMigrationLayer) {
                 netMigrationLayer.when(() => {
                     const renderer = netMigrationLayer.renderer;
@@ -562,7 +570,7 @@
                             const max = Number(breakInfo.maxValue).toFixed(1);
                             breakInfo.label = `${min} to ${max}`;
                         });
-                        netMigrationLayer.renderer = renderer;
+                        netMigrationLayer.renderer = renderer; // reassign modified renderer to layer
                         netMigrationLayer.refresh();
                     }
                 });
@@ -616,13 +624,13 @@
                         flowlineLayers.forEach(layerItem => {
                             const isActive = layerItem.key === item.key;
 
-                            layerItem.layer.visible = isActive;
+                            layerItem.layer.visible = isActive; 
 
                             if (isActive) {
                                 layerItem.layer.definitionExpression = "1=0"; // start empty
                                 layerItem.layer.refresh();
                             } else if (layerItem.layer.visible) {
-                                fadeOutFlowLines(layerItem.layer);
+                                fadeOutFlowLines(layerItem.layer); // fades out any old active layer
                             }
                         });
 
@@ -633,9 +641,6 @@
                             }];
                         }
                     });
-
-
-
 
 
                     const label = document.createElement("label");
@@ -663,13 +668,13 @@
             });
 
 
-            view.on("click", function (event) {
-                view.hitTest(event).then(function (response) {
+            view.on("click", function (event) { 
+                view.hitTest(event).then(function (response) { // hit test": what features are at this location?
 
                     // FLOWLINE HANDLER
                     const visibleFlowLayer = flowlineLayers.find(item => item.layer.visible)?.layer;
-                    const flowlineFeature = response.results.find(res =>
-                        res.graphic && res.graphic.layer === visibleFlowLayer
+                    const flowlineFeature = response.results.find(res => // response.results is a list of features clicked on
+                        res.graphic && res.graphic.layer === visibleFlowLayer // checks if its a graphic and if it belongs to the currently visible flowline layer
                     );
 
                     if (flowlineFeature) {
@@ -695,26 +700,26 @@
                             });
 
                             if (highlightHandle) {
-                                highlightHandle.remove();
+                                highlightHandle.remove(); // removes previous highlight if there was one
                                 highlightHandle = null;
                             }
 
                             view.whenLayerView(graphic.layer).then(layerView => {
-                                highlightHandle = layerView.highlight(graphic);
+                                highlightHandle = layerView.highlight(graphic); // highlights clicked line using arcgis's layerView.highlight()
                             });
                         }, 50);
 
-                        return; // ✅ keep this return for early exit if flowline clicked
+                        return; // keep this return for early exit if flowline clicked (so this runs, not country logic)
                     }
 
-                    // COUNTRY CLICK LOGIC CONTINUES HERE...
+                    // COUNTRY CLICK LOGIC
                     const countryFeature = response.results.find(res =>
                         res.graphic && res.graphic.layer === countryLayer
                     );
 
                     if (countryFeature) {
                         const selectedCountry = countryFeature.graphic.attributes["Origin"];
-                        console.log(`✅ Country clicked: ${selectedCountry}`);
+                        console.log(`Country clicked: ${selectedCountry}`);
 
                         if (selectedCountry) {
                             lastSelectedCountry = selectedCountry;
@@ -722,7 +727,8 @@
                             const minMigrants = sliderValueToMigrants(migrantSlider.value);
 
                             let activeFlowLayer = flowlineLayers.find(item => item.layer.visible)?.layer;
-                            if (!activeFlowLayer && defaultFlowlineLayer) {
+
+                            if (!activeFlowLayer && defaultFlowlineLayer) { // defaults to default flow line layer if none is visible
                                 activeFlowLayer = defaultFlowlineLayer;
                                 defaultFlowlineLayer.visible = true;
                                 defaultFlowlineLayer.refresh();
@@ -751,21 +757,19 @@
                             highlightHandle = null;
                         }
                     }
-                }); // ✅ this closes .then()
-            });     // ✅ this closes view.on("click")
+                }); // closes .then()
+            });     // closes view.on("click")
 
 
 
             view.when(() => { // view.when waits for the map view to finish loading
-
-                
 
                 const directionRadios = document.querySelectorAll("input[name='direction']");
                 directionRadios.forEach(radio => {
                     radio.addEventListener("change", () => {
                         migrationDirection = radio.value;
 
-                        // ✅ Reset if a country is selected
+                        // Reset if a country is selected
                         if (lastSelectedCountry) {
                             lastSelectedCountry = null;
 
@@ -792,15 +796,15 @@
                             }
                         }
 
-                        // ✅ Update popup if user had clicked a flowline
-                        if (view.popup.selectedFeature?.attributes) {
+                        // Update popup if user had clicked a flowline
+                        if (view.popup.selectedFeature?.attributes) { // ?. so if there's no selected feature, it doesn't crash
                             const attr = view.popup.selectedFeature.attributes;
                             const totalMigrants = attr["Migrants"];
                             const origin = attr["Origin"];
                             const destination = attr["Destination"];
 
                             const content = `
-                                <p><b>Total Migrants:</b> ${Number(totalMigrants).toLocaleString()}</p>
+                                <p><b>Total Migrants:</b> ${Number(totalMigrants).toLocaleString()}</p> // toLocaleString adds commas (e.g., 10000 --> 10,000)
                                 <p><b>Origin:</b> ${origin}</p>
                                 <p><b>Destination:</b> ${destination}</p>
                             `;
@@ -809,8 +813,6 @@
                         }
                     });
                 });
-
-
 
                 const toggleContainer = document.createElement("div");
                 toggleContainer.innerHTML = `
@@ -825,7 +827,7 @@
                 view.ui.add(toggleContainer, "top-right");
 
                 flowlineLayers.forEach(item => {
-                    const isDark = document.getElementById("darkModeToggle").checked;
+                    const isDark = document.getElementById("darkModeToggle").checked; // returns true if its on, false if not
                     const flowColor = isDark ? [0, 255, 255] : [0, 160, 200];
 
                     item.layer.renderer = {
@@ -888,38 +890,9 @@
                 addFlowlineToggles();
 
                 
-                // document.getElementById("resetBtn").addEventListener("click", function () {
-                //     lastSelectedCountry = null;
-
-                //     // Reset slider
-                //     migrantSlider.value = 0;
-                //     document.getElementById("sliderValue").innerText = "0";
-
-                //     // Hide flowlines
-                //     flowlineLayers.forEach(layerItem => {
-                //         layerItem.layer.definitionExpression = "1=0";
-                //         layerItem.layer.refresh();
-                //     });
-
-                //     // Reset flowline radio buttons
-                //     document.getElementById("radioNone").click();
-
-                //     // ✅ Reset basemap radio to "None"
-                //     const noneRadio = document.getElementById("noneBasemap");
-                //     noneRadio.checked = true;
-                //     noneRadio.dispatchEvent(new Event("change"));
-
-                //     // Close popup & clear highlight
-                //     view.popup.close();
-                //     if (highlightHandle) {
-                //         highlightHandle.remove();
-                //         highlightHandle = null;
-                //     }
-                // });
 
 
-
-                // 🔘 Info panel close button
+                // Info panel close button
                 const toggleInfoBtn = document.getElementById("toggleInfoBtn");
                 const reopenInfoBtn = document.getElementById("reopenInfoBtn");
                 const infoPanel = document.getElementById("infoPanel");
@@ -932,12 +905,12 @@
                 reopenInfoBtn.addEventListener("click", () => {
                     infoPanel.style.display = "block";
                     reopenInfoBtn.style.display = "none";
-                });
+                }); 
 
                 legend = new Legend({
                     view: view,
                     container: "legendDiv",
-                    layerInfos: []  // ⛔ prevents ArcGIS from auto-including all visible layers
+                    layerInfos: []  // prevents ArcGIS from auto-including all visible layers
                 });
 
                 

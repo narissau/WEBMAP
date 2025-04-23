@@ -133,44 +133,62 @@ input:checked+.slider:before {
     margin-bottom: 10px;
 }
 
+@keyframes fadeInPanel {
+    from {
+        opacity: 0;
+        transform: translate(-50%, -60%);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(-50%, -50%);
+    }
+}
+
 .info-panel {
     position: absolute;
-    top: 10px;
-    left: 10px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
     background: rgba(255, 255, 255, 0.95);
     color: #333;
-    padding: 15px;
-    width: 300px;
-    border-radius: 8px;
+    padding: 20px 25px;
+    width: 350px;
+    border-radius: 12px;
     font-family: "Lato", sans-serif;
-    box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.3);
-    z-index: 99;
-}
-
-.info-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    font-weight: bold;
-    border-bottom: 1px solid #ccc;
-    margin-bottom: 10px;
-}
-
-.info-header button {
-    background: none;
-    border: none;
-    font-size: 16px;
-    cursor: pointer;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    z-index: 999;
+    text-align: left;
+    animation: fadeInPanel 0.4s ease-out;
 }
 
 .info-body h2 {
-    font-size: 18px;
-    margin: 0 0 10px 0;
+    font-size: 20px;
+    margin-bottom: 12px;
+    color: #222;
 }
 
 .info-body p {
     font-size: 14px;
-    margin: 6px 0;
+    line-height: 1.4;
+    margin: 10px 0;
+}
+
+.info-close-btn {
+    margin-top: 15px;
+    display: inline-block;
+    padding: 6px 14px;
+    background-color: #1976d2;
+    color: white;
+    font-size: 13px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: 0.3s ease;
+}
+
+.info-close-btn:hover {
+    background-color: #125ea9;
 }
 
 .reopen-btn {
@@ -207,6 +225,5 @@ input:checked+.slider:before {
 @media (max-height: 850px) {
     #layerControls {
         max-height: 65vh;
-        /* shrink panel to 70% of viewport height */
     }
 }
